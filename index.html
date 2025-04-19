@@ -1,27 +1,139 @@
 <!DOCTYPE html>
-<html>
+<html lang="id">
 <head>
-  <title>Fan Control Dashboard</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dashboard Fan Control</title>
+  <!-- Google Font untuk tampilan yang modern -->
+  <link href="https://fonts.googleapis.com/css2?family=Roboto&display=swap" rel="stylesheet">
+  <style>
+    /* Mengatur style dasar halaman */
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: 'Roboto', sans-serif;
+      background: linear-gradient(135deg, #74ABE2, #5563DE);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      color: #fff;
+    }
+
+    /* Container utama dengan efek transparan dan bayangan */
+    .container {
+      background-color: rgba(0, 0, 0, 0.5);
+      padding: 30px;
+      border-radius: 12px;
+      width: 90%;
+      max-width: 500px;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+      text-align: center;
+    }
+
+    .title {
+      font-size: 28px;
+      margin-bottom: 20px;
+      font-weight: 500;
+    }
+
+    /* Setiap slider container */
+    .slider-container {
+      margin: 20px 0;
+      text-align: left;
+    }
+
+    .slider-label {
+      font-size: 18px;
+      margin-bottom: 8px;
+      display: block;
+    }
+
+    .slider {
+      -webkit-appearance: none;
+      width: 100%;
+      height: 10px;
+      border-radius: 5px;
+      background: #ddd;
+      outline: none;
+      transition: opacity 0.2s;
+    }
+
+    .slider:hover {
+      opacity: 0.8;
+    }
+
+    .slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: #5563DE;
+      cursor: pointer;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
+      transition: background 0.3s;
+    }
+
+    .slider::-webkit-slider-thumb:hover {
+      background: #3f50b5;
+    }
+
+    .slider-value {
+      text-align: right;
+      font-size: 16px;
+      margin-top: 5px;
+    }
+  </style>
+  <!-- Menggunakan pustaka MQTT melalui WebSocket -->
   <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
 </head>
 <body>
-  <h2>Fan Control Dashboard</h2>
-  <div>
-    <p>Fan 1: <input type="range" min="0" max="100" value="0" onchange="sendValue(1, this.value)"></p>
-    <p>Fan 2: <input type="range" min="0" max="100" value="0" onchange="sendValue(2, this.value)"></p>
-    <p>Fan 3: <input type="range" min="0" max="100" value="0" onchange="sendValue(3, this.value)"></p>
-    <p>Fan 4: <input type="range" min="0" max="100" value="0" onchange="sendValue(4, this.value)"></p>
+  <div class="container">
+    <div class="title">Fan Control Dashboard</div>
+    
+    <div class="slider-container">
+      <label class="slider-label" for="slider1">Fan 1</label>
+      <input type="range" min="0" max="100" value="0" class="slider" id="slider1" onchange="updateValue(1, this.value)">
+      <div class="slider-value" id="value1">0%</div>
+    </div>
+    
+    <div class="slider-container">
+      <label class="slider-label" for="slider2">Fan 2</label>
+      <input type="range" min="0" max="100" value="0" class="slider" id="slider2" onchange="updateValue(2, this.value)">
+      <div class="slider-value" id="value2">0%</div>
+    </div>
+    
+    <div class="slider-container">
+      <label class="slider-label" for="slider3">Fan 3</label>
+      <input type="range" min="0" max="100" value="0" class="slider" id="slider3" onchange="updateValue(3, this.value)">
+      <div class="slider-value" id="value3">0%</div>
+    </div>
+    
+    <div class="slider-container">
+      <label class="slider-label" for="slider4">Fan 4</label>
+      <input type="range" min="0" max="100" value="0" class="slider" id="slider4" onchange="updateValue(4, this.value)">
+      <div class="slider-value" id="value4">0%</div>
+    </div>
   </div>
-
+  
   <script>
-    const client = mqtt.connect('wss://broker.hivemq.com:8884/mqtt')
+    // Menginisialisasi koneksi ke broker MQTT menggunakan WebSocket
+    const client = mqtt.connect('wss://broker.hivemq.com:8884/mqtt');
 
-    client.on('connect', function () {
-      console.log('Connected to MQTT broker')
-    })
-
+    client.on('connect', function() {
+      console.log('Connected to MQTT broker');
+    });
+    
+    // Fungsi untuk mengirim nilai ke topik MQTT sesuai nomor fan
     function sendValue(fan, value) {
-      client.publish(`fancontrol/fan${fan}`, value.toString())
+      client.publish(`fancontrol/fan${fan}`, value.toString());
+    }
+
+    // Update tampilan nilai slider dan kirim data via MQTT
+    function updateValue(fan, value) {
+      document.getElementById(`value${fan}`).innerText = `${value}%`;
+      sendValue(fan, value);
     }
   </script>
 </body>
