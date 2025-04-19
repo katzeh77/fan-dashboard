@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Fan Control Dashboard</title>
+  <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+</head>
+<body>
+  <h2>Fan Control Dashboard</h2>
+  <div>
+    <p>Fan 1: <input type="range" min="0" max="100" value="0" onchange="sendValue(1, this.value)"></p>
+    <p>Fan 2: <input type="range" min="0" max="100" value="0" onchange="sendValue(2, this.value)"></p>
+    <p>Fan 3: <input type="range" min="0" max="100" value="0" onchange="sendValue(3, this.value)"></p>
+    <p>Fan 4: <input type="range" min="0" max="100" value="0" onchange="sendValue(4, this.value)"></p>
+  </div>
+
+  <script>
+    const client = mqtt.connect('wss://broker.hivemq.com:8884/mqtt')
+
+    client.on('connect', function () {
+      console.log('Connected to MQTT broker')
+    })
+
+    function sendValue(fan, value) {
+      client.publish(`fancontrol/fan${fan}`, value.toString())
+    }
+  </script>
+</body>
+</html>
