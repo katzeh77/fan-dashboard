@@ -13,14 +13,13 @@
     body {
       margin: 0;
       font-family: 'Segoe UI', sans-serif;
-      background: url('https://images.unsplash.com/photo-1618681331334-e7a7b0e73306?auto=format&fit=crop&w=1200&q=80') no-repeat center center fixed;
+      background: url('https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1350&q=80') no-repeat center center fixed;
       background-size: cover;
       display: flex;
       flex-direction: column;
-      justify-content: center;
       align-items: center;
+      padding: 20px 10px;
       min-height: 100vh;
-      padding: 10px;
       color: white;
       text-shadow: 1px 1px 2px black;
     }
@@ -42,7 +41,7 @@
       background: rgba(255, 255, 255, 0.1);
       backdrop-filter: blur(10px);
       border-radius: 20px;
-      padding: 15px;
+      padding: 20px;
       text-align: center;
       box-shadow: 0 4px 20px rgba(0,0,0,0.2);
     }
@@ -58,6 +57,19 @@
       font-size: 16px;
       color: #fff;
       margin-bottom: 10px;
+    }
+
+    .fan-icon {
+      width: 40px;
+      height: 40px;
+      margin: 0 auto 10px;
+      animation: spin 2s linear infinite;
+      opacity: 0.8;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
     }
 
     input[type="range"] {
@@ -80,12 +92,6 @@
       cursor: pointer;
       box-shadow: 0 0 2px rgba(0,0,0,0.3);
     }
-
-    @media (max-height: 700px) {
-      h2 {
-        font-size: 18px;
-      }
-    }
   </style>
 </head>
 <body>
@@ -98,6 +104,11 @@
     const createSlider = (fanNum) => {
       const card = document.createElement("div");
       card.className = "slider-card";
+
+      const fanImg = document.createElement("img");
+      fanImg.src = "https://cdn-icons-png.flaticon.com/512/159/159604.png";
+      fanImg.className = "fan-icon";
+      card.appendChild(fanImg);
 
       const label = document.createElement("label");
       label.innerText = `Fan ${fanNum}`;
@@ -120,6 +131,7 @@
       slider.addEventListener("input", () => {
         valueText.innerText = slider.value;
         client.publish(`fan/${fanNum}`, slider.value);
+        fanImg.style.animationDuration = `${2 - (slider.value / 255) * 1.8}s`;
       });
 
       document.getElementById("sliders").appendChild(card);
