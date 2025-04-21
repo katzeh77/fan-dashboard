@@ -9,88 +9,105 @@
     * {
       box-sizing: border-box;
     }
+
     body {
+      margin: 0;
       font-family: 'Segoe UI', sans-serif;
-      background: #e0e5ec;
+      background: url('https://images.unsplash.com/photo-1618681331334-e7a7b0e73306?auto=format&fit=crop&w=1200&q=80') no-repeat center center fixed;
+      background-size: cover;
       display: flex;
       flex-direction: column;
+      justify-content: center;
       align-items: center;
-      padding: 40px 20px;
       min-height: 100vh;
-      margin: 0;
+      padding: 10px;
+      color: white;
+      text-shadow: 1px 1px 2px black;
     }
+
     h2 {
-      margin-bottom: 30px;
-      color: #333;
+      margin-bottom: 20px;
+      font-size: 24px;
     }
-    .slider-card {
-      background: #e0e5ec;
-      box-shadow: 9px 9px 16px #babecc,
-                  -9px -9px 16px #ffffff;
-      border-radius: 20px;
-      padding: 20px 30px;
-      margin-bottom: 30px;
+
+    .dashboard {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 20px;
       width: 100%;
-      max-width: 400px;
+      max-width: 500px;
+    }
+
+    .slider-card {
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(10px);
+      border-radius: 20px;
+      padding: 15px;
       text-align: center;
-      transition: all 0.3s ease;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.2);
     }
-    .slider-card:hover {
-      transform: scale(1.02);
-    }
+
     label {
       font-weight: bold;
-      color: #555;
-    }
-    .value {
-      font-size: 18px;
-      color: #111;
-      margin-top: 8px;
-      margin-bottom: 15px;
       display: block;
+      margin-bottom: 10px;
+      color: #fff;
     }
+
+    .value {
+      font-size: 16px;
+      color: #fff;
+      margin-bottom: 10px;
+    }
+
     input[type="range"] {
       width: 100%;
-      margin-top: 10px;
-      -webkit-appearance: none;
       height: 10px;
+      border-radius: 5px;
       background: #d1d9e6;
-      border-radius: 10px;
+      -webkit-appearance: none;
+      appearance: none;
       outline: none;
     }
+
     input[type="range"]::-webkit-slider-thumb {
       -webkit-appearance: none;
       appearance: none;
       width: 20px;
       height: 20px;
       border-radius: 50%;
-      background: #4a90e2;
+      background: coral;
       cursor: pointer;
       box-shadow: 0 0 2px rgba(0,0,0,0.3);
+    }
+
+    @media (max-height: 700px) {
+      h2 {
+        font-size: 18px;
+      }
     }
   </style>
 </head>
 <body>
-  <h2>Fan Speed Controller</h2>
-
-  <div id="sliders"></div>
+  <h2>🌊 Fan Speed Controller</h2>
+  <div class="dashboard" id="sliders"></div>
 
   <script>
     const client = mqtt.connect("wss://broker.hivemq.com:8884/mqtt");
 
     const createSlider = (fanNum) => {
-      const container = document.createElement("div");
-      container.className = "slider-card";
+      const card = document.createElement("div");
+      card.className = "slider-card";
 
       const label = document.createElement("label");
       label.innerText = `Fan ${fanNum}`;
-      container.appendChild(label);
+      card.appendChild(label);
 
       const valueText = document.createElement("span");
       valueText.id = `value${fanNum}`;
       valueText.className = "value";
       valueText.innerText = "0";
-      container.appendChild(valueText);
+      card.appendChild(valueText);
 
       const slider = document.createElement("input");
       slider.type = "range";
@@ -98,18 +115,18 @@
       slider.max = "255";
       slider.value = "0";
       slider.id = `fan${fanNum}`;
-      container.appendChild(slider);
+      card.appendChild(slider);
 
       slider.addEventListener("input", () => {
         valueText.innerText = slider.value;
         client.publish(`fan/${fanNum}`, slider.value);
       });
 
-      document.getElementById("sliders").appendChild(container);
+      document.getElementById("sliders").appendChild(card);
     };
 
     client.on("connect", () => {
-      console.log("Connected to MQTT broker");
+      console.log("Connected to MQTT");
     });
 
     for (let i = 1; i <= 4; i++) {
