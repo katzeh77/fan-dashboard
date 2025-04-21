@@ -26,3 +26,95 @@
     .slider-card {
       background: #e0e5ec;
       box-shadow: 9px 9px 16px #babecc,
+                  -9px -9px 16px #ffffff;
+      border-radius: 20px;
+      padding: 20px 30px;
+      margin-bottom: 30px;
+      width: 100%;
+      max-width: 400px;
+      text-align: center;
+      transition: all 0.3s ease;
+    }
+    .slider-card:hover {
+      transform: scale(1.02);
+    }
+    label {
+      font-weight: bold;
+      color: #555;
+    }
+    .value {
+      font-size: 18px;
+      color: #111;
+      margin-top: 8px;
+      margin-bottom: 15px;
+      display: block;
+    }
+    input[type="range"] {
+      width: 100%;
+      margin-top: 10px;
+      -webkit-appearance: none;
+      height: 10px;
+      background: #d1d9e6;
+      border-radius: 10px;
+      outline: none;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: #4a90e2;
+      cursor: pointer;
+      box-shadow: 0 0 2px rgba(0,0,0,0.3);
+    }
+  </style>
+</head>
+<body>
+  <h2>Fan Speed Controller</h2>
+
+  <div id="sliders"></div>
+
+  <script>
+    const client = mqtt.connect("wss://broker.hivemq.com:8884/mqtt");
+
+    const createSlider = (fanNum) => {
+      const container = document.createElement("div");
+      container.className = "slider-card";
+
+      const label = document.createElement("label");
+      label.innerText = `Fan ${fanNum}`;
+      container.appendChild(label);
+
+      const valueText = document.createElement("span");
+      valueText.id = `value${fanNum}`;
+      valueText.className = "value";
+      valueText.innerText = "0";
+      container.appendChild(valueText);
+
+      const slider = document.createElement("input");
+      slider.type = "range";
+      slider.min = "0";
+      slider.max = "255";
+      slider.value = "0";
+      slider.id = `fan${fanNum}`;
+      container.appendChild(slider);
+
+      slider.addEventListener("input", () => {
+        valueText.innerText = slider.value;
+        client.publish(`fan/${fanNum}`, slider.value);
+      });
+
+      document.getElementById("sliders").appendChild(container);
+    };
+
+    client.on("connect", () => {
+      console.log("Connected to MQTT broker");
+    });
+
+    for (let i = 1; i <= 4; i++) {
+      createSlider(i);
+    }
+  </script>
+</body>
+</html>
