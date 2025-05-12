@@ -9,7 +9,7 @@
             font-family: Arial, sans-serif;
             text-align: center;
             margin-top: 20px;
-            background-image: url('https://example.com/path/to/your/coral-reef-image.jpg'); /* Ganti dengan URL gambar terumbu karang */
+            background-image: url('https://cdn.openai.com/research-covers/2025-05-12-coral-reef.jpg'); /* Ganti dengan URL gambar terumbu karang */
             background-size: cover;
             background-position: center;
             color: white;
@@ -30,66 +30,4 @@
         <!-- Sliders for controlling 8 LEDs -->
         <div class="slider-container">
             <label for="led1">LED 1</label><br>
-            <input type="range" id="led1" class="slider" min="0" max="255" value="0">
-        </div>
-        <div class="slider-container">
-            <label for="led2">LED 2</label><br>
-            <input type="range" id="led2" class="slider" min="0" max="255" value="0">
-        </div>
-        <div class="slider-container">
-            <label for="led3">LED 3</label><br>
-            <input type="range" id="led3" class="slider" min="0" max="255" value="0">
-        </div>
-        <div class="slider-container">
-            <label for="led4">LED 4</label><br>
-            <input type="range" id="led4" class="slider" min="0" max="255" value="0">
-        </div>
-        <div class="slider-container">
-            <label for="led5">LED 5</label><br>
-            <input type="range" id="led5" class="slider" min="0" max="255" value="0">
-        </div>
-        <div class="slider-container">
-            <label for="led6">LED 6</label><br>
-            <input type="range" id="led6" class="slider" min="0" max="255" value="0">
-        </div>
-        <div class="slider-container">
-            <label for="led7">LED 7</label><br>
-            <input type="range" id="led7" class="slider" min="0" max="255" value="0">
-        </div>
-        <div class="slider-container">
-            <label for="led8">LED 8</label><br>
-            <input type="range" id="led8" class="slider" min="0" max="255" value="0">
-        </div>
-    </div>
-
-    <script>
-        // MQTT connection
-        const client = mqtt.connect('wss://broker.emqx.io:8084/mqtt'); // WebSocket connection
-
-        // On connect
-        client.on('connect', () => {
-            console.log('Connected to MQTT broker');
-            // Subscribe to topics
-            for (let i = 1; i <= 8; i++) {
-                client.subscribe('led/' + i);
-            }
-        });
-
-        // When message arrives, update sliders
-        client.on('message', (topic, message) => {
-            let ledNum = topic.split('/')[1];
-            let brightness = parseInt(message.toString(), 10);
-            document.getElementById('led' + ledNum).value = brightness;
-        });
-
-        // Update MQTT topic when slider is changed
-        for (let i = 1; i <= 8; i++) {
-            const slider = document.getElementById('led' + i);
-            slider.addEventListener('input', () => {
-                let value = slider.value;
-                client.publish('led/' + i, value.toString());
-            });
-        }
-    </script>
-</body>
-</html>
+            <input type="range" id="led1" class="slider
