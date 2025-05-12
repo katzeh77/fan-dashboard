@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LED Control Dashboard</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin-top: 20px;
+        }
+        .slider-container {
+            margin: 20px;
+        }
+        .slider {
+            width: 300px;
+        }
+    </style>
+    <!-- Include MQTT.js library -->
+    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+</head>
+<body>
+    <h1>Control LED Brightness</h1>
+    <div id="sliders">
+        <!-- Sliders for controlling 8 LEDs -->
+        <div class="slider-container">
+            <label for="led1">LED 1</label><br>
+            <input type="range" id="led1" class="slider" min="0" max="255" value="0">
+        </div>
+        <div class="slider-container">
+            <label for="led2">LED 2</label><br>
+            <input type="range" id="led2" class="slider" min="0" max="255" value="0">
+        </div>
+        <div class="slider-container">
+            <label for="led3">LED 3</label><br>
+            <input type="range" id="led3" class="slider" min="0" max="255" value="0">
+        </div>
+        <div class="slider-container">
+            <label for="led4">LED 4</label><br>
+            <input type="range" id="led4" class="slider" min="0" max="255" value="0">
+        </div>
+        <div class="slider-container">
+            <label for="led5">LED 5</label><br>
+            <input type="range" id="led5" class="slider" min="0" max="255" value="0">
+        </div>
+        <div class="slider-container">
+            <label for="led6">LED 6</label><br>
+            <input type="range" id="led6" class="slider" min="0" max="255" value="0">
+        </div>
+        <div class="slider-container">
+            <label for="led7">LED 7</label><br>
+            <input type="range" id="led7" class="slider" min="0" max="255" value="0">
+        </div>
+        <div class="slider-container">
+            <label for="led8">LED 8</label><br>
+            <input type="range" id="led8" class="slider" min="0" max="255" value="0">
+        </div>
+    </div>
+
+    <script>
+        // MQTT connection
+        const client = mqtt.connect('wss://broker.emqx.io:8084/mqtt'); // WebSocket connection
+
+        // On connect
+        client.on('connect', () => {
+            console.log('Connected to MQTT broker');
+            // Subscribe to topics
+            for (let i = 1; i <= 8; i++) {
+                client.subscribe('led/' + i);
+            }
+        });
+
+        // When message arrives, update sliders
+        client.on('message', (topic, message) => {
+            let ledNum = topic.split('/')[1];
+            let brightness = parseInt(message.toString(), 10);
+            document.getElementById('led' + ledNum).value = brightness;
+        });
+
+        // Update MQTT topic when slider is changed
+        for (let i = 1; i <= 8; i++) {
+            const slider = document.getElementById('led' + i);
+            slider.addEventListener('input', () => {
+                let value = slider.value;
+                client.publish('led/' + i, value.toString());
+            });
+        }
+    </script>
+</body>
+</html>
