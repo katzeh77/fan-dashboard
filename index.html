@@ -3,93 +3,105 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>LED Dashboard Modern</title>
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+  <title>LED Dashboard - Modern UI</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
   <style>
-    html, body {
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
       margin: 0;
-      padding: 0;
-      min-height: 100vh;
-      font-family: 'Poppins', sans-serif;
-      background-image: url('https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1350&q=80');
+      font-family: 'Inter', sans-serif;
+      background: url('https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1350&q=80') no-repeat center center fixed;
       background-size: cover;
-      background-position: center;
-      background-attachment: fixed;
-      color: #fff;
       display: flex;
       flex-direction: column;
       align-items: center;
+      min-height: 100vh;
+      padding: 20px;
+      color: #fff;
     }
 
     h1 {
-      margin-top: 30px;
+      margin: 20px 0;
       font-size: 28px;
-      font-weight: 600;
-      text-shadow: 2px 2px 5px rgba(0,0,0,0.5);
+      text-align: center;
+      text-shadow: 2px 2px 6px rgba(0, 0, 0, 0.7);
     }
 
-    .card {
+    .dashboard {
       background: rgba(255, 255, 255, 0.1);
-      backdrop-filter: blur(10px);
-      border-radius: 16px;
-      padding: 20px;
-      margin: 10px;
-      width: 90%;
-      max-width: 400px;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+      backdrop-filter: blur(15px);
+      border-radius: 20px;
+      padding: 25px;
+      width: 100%;
+      max-width: 420px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.4);
     }
 
     .slider-container {
-      margin: 15px 0;
+      margin: 20px 0;
+      text-align: left;
     }
 
-    label {
+    .slider-container label {
       display: block;
-      margin-bottom: 8px;
-      font-weight: 600;
+      margin-bottom: 10px;
       font-size: 16px;
+      font-weight: 600;
+      color: #ffffff;
+      text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.6);
     }
 
     input[type="range"] {
-      width: 100%;
       -webkit-appearance: none;
-      height: 8px;
-      border-radius: 5px;
-      background: #ccc;
+      width: 100%;
+      height: 12px;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.3);
       outline: none;
       transition: background 0.3s;
     }
 
     input[type="range"]::-webkit-slider-thumb {
       -webkit-appearance: none;
-      width: 20px;
-      height: 20px;
+      appearance: none;
+      width: 24px;
+      height: 24px;
       border-radius: 50%;
       background: #fff;
-      box-shadow: 0 0 4px rgba(0,0,0,0.3);
+      border: 2px solid #007bff;
       cursor: pointer;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+      transition: transform 0.2s;
     }
 
-    input[type="range"]:hover {
-      background: #aaa;
+    input[type="range"]::-webkit-slider-thumb:hover {
+      transform: scale(1.1);
     }
 
-    /* Warna label khusus */
-    #led1-label { color: #ff6347; }
-    #led2-label { color: #32cd32; }
-    #led3-label { color: #1e90ff; }
-    #led4-label { color: #ff8c00; }
-    #led5-label { color: #8a2be2; }
-    #led6-label { color: #f0e68c; }
-    #led7-label { color: #d2691e; }
-    #led8-label { color: #00bfff; }
+    /* Warna label LED */
+    #led1-label { color: #ff6b6b; }
+    #led2-label { color: #51cf66; }
+    #led3-label { color: #339af0; }
+    #led4-label { color: #ffa94d; }
+    #led5-label { color: #b197fc; }
+    #led6-label { color: #fce883; }
+    #led7-label { color: #e59866; }
+    #led8-label { color: #5dade2; }
 
+    @media (max-width: 500px) {
+      h1 { font-size: 24px; }
+      .dashboard { padding: 15px; }
+      .slider-container label { font-size: 14px; }
+    }
   </style>
   <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
 </head>
 <body>
-  <h1>LED Control Dashboard</h1>
-  <div class="card">
+  <h1>Control LED Brightness</h1>
+  <div class="dashboard">
     <div class="slider-container">
       <label id="led1-label" for="led1">LED 1</label>
       <input type="range" id="led1" min="0" max="255" value="0">
