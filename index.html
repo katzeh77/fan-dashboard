@@ -8,21 +8,22 @@
     html, body {
       margin: 0;
       padding: 0;
-      height: 100vh;
+      min-height: 100vh; /* Biarkan tinggi sesuai konten */
       font-family: Arial, sans-serif;
       color: white;
       background-image: url('https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1350&q=80');
       background-size: cover;
       background-position: center;
       background-repeat: no-repeat;
+      background-attachment: fixed; /* Agar tidak bertumpuk saat scroll */
       display: flex;
       flex-direction: column;
       align-items: center;
-      overflow-y: auto;
     }
 
     h1 {
       margin-top: 20px;
+      text-shadow: 2px 2px 4px #000;
     }
 
     .slider-container {
@@ -36,9 +37,10 @@
 
     label {
       font-size: 18px;
+      text-shadow: 1px 1px 2px black;
     }
 
-    /* Warna untuk setiap label slider */
+    /* Warna label setiap LED */
     #led1-label { color: #ff6347; }
     #led2-label { color: #32cd32; }
     #led3-label { color: #1e90ff; }
@@ -53,19 +55,43 @@
 <body>
   <h1>Control LED Brightness</h1>
   <div id="sliders">
-    <!-- Sliders for controlling 8 LEDs -->
-    <div class="slider-container"><label id="led1-label" for="led1">LED 1</label><br><input type="range" id="led1" class="slider" min="0" max="255" value="0"></div>
-    <div class="slider-container"><label id="led2-label" for="led2">LED 2</label><br><input type="range" id="led2" class="slider" min="0" max="255" value="0"></div>
-    <div class="slider-container"><label id="led3-label" for="led3">LED 3</label><br><input type="range" id="led3" class="slider" min="0" max="255" value="0"></div>
-    <div class="slider-container"><label id="led4-label" for="led4">LED 4</label><br><input type="range" id="led4" class="slider" min="0" max="255" value="0"></div>
-    <div class="slider-container"><label id="led5-label" for="led5">LED 5</label><br><input type="range" id="led5" class="slider" min="0" max="255" value="0"></div>
-    <div class="slider-container"><label id="led6-label" for="led6">LED 6</label><br><input type="range" id="led6" class="slider" min="0" max="255" value="0"></div>
-    <div class="slider-container"><label id="led7-label" for="led7">LED 7</label><br><input type="range" id="led7" class="slider" min="0" max="255" value="0"></div>
-    <div class="slider-container"><label id="led8-label" for="led8">LED 8</label><br><input type="range" id="led8" class="slider" min="0" max="255" value="0"></div>
+    <div class="slider-container">
+      <label id="led1-label" for="led1">LED 1</label><br>
+      <input type="range" id="led1" class="slider" min="0" max="255" value="0">
+    </div>
+    <div class="slider-container">
+      <label id="led2-label" for="led2">LED 2</label><br>
+      <input type="range" id="led2" class="slider" min="0" max="255" value="0">
+    </div>
+    <div class="slider-container">
+      <label id="led3-label" for="led3">LED 3</label><br>
+      <input type="range" id="led3" class="slider" min="0" max="255" value="0">
+    </div>
+    <div class="slider-container">
+      <label id="led4-label" for="led4">LED 4</label><br>
+      <input type="range" id="led4" class="slider" min="0" max="255" value="0">
+    </div>
+    <div class="slider-container">
+      <label id="led5-label" for="led5">LED 5</label><br>
+      <input type="range" id="led5" class="slider" min="0" max="255" value="0">
+    </div>
+    <div class="slider-container">
+      <label id="led6-label" for="led6">LED 6</label><br>
+      <input type="range" id="led6" class="slider" min="0" max="255" value="0">
+    </div>
+    <div class="slider-container">
+      <label id="led7-label" for="led7">LED 7</label><br>
+      <input type="range" id="led7" class="slider" min="0" max="255" value="0">
+    </div>
+    <div class="slider-container">
+      <label id="led8-label" for="led8">LED 8</label><br>
+      <input type="range" id="led8" class="slider" min="0" max="255" value="0">
+    </div>
   </div>
 
   <script>
     const client = mqtt.connect('wss://broker.emqx.io:8084/mqtt');
+
     client.on('connect', () => {
       console.log('Connected to MQTT broker');
       for (let i = 1; i <= 8; i++) {
@@ -76,7 +102,8 @@
     client.on('message', (topic, message) => {
       let ledNum = topic.split('/')[1];
       let brightness = parseInt(message.toString(), 10);
-      document.getElementById('led' + ledNum).value = brightness;
+      const slider = document.getElementById('led' + ledNum);
+      if (slider) slider.value = brightness;
     });
 
     for (let i = 1; i <= 8; i++) {
