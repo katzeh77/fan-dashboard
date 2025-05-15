@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LED Dashboard - Modern UI</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: 'Inter', sans-serif;
+      background: url('https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1350&q=80') no-repeat center center fixed;
+      background-size: cover;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      padding: 20px;
+      color: #fff;
+    }
+
+    h1 {
+      margin: 20px 0;
+      font-size: 28px;
+      text-align: center;
+      text-shadow: 2px 2px 6px rgba(0, 0, 0, 0.7);
+    }
+
+    .dashboard {
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(15px);
+      border-radius: 20px;
+      padding: 25px;
+      width: 100%;
+      max-width: 420px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    }
+
+    .slider-container {
+      margin: 20px 0;
+      text-align: left;
+    }
+
+    .slider-container label {
+      display: block;
+      margin-bottom: 10px;
+      font-size: 16px;
+      font-weight: 600;
+      color: #ffffff;
+      text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.6);
+    }
+
+    input[type="range"] {
+      -webkit-appearance: none;
+      width: 100%;
+      height: 12px;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.3);
+      outline: none;
+      transition: background 0.3s;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: #fff;
+      border: 2px solid #007bff;
+      cursor: pointer;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+      transition: transform 0.2s;
+    }
+
+    input[type="range"]::-webkit-slider-thumb:hover {
+      transform: scale(1.1);
+    }
+
+    /* Warna label LED */
+    #led1-label { color: #ff6b6b; }
+    #led2-label { color: #51cf66; }
+    #led3-label { color: #339af0; }
+    #led4-label { color: #ffa94d; }
+    #led5-label { color: #b197fc; }
+    #led6-label { color: #fce883; }
+    #led7-label { color: #e59866; }
+    #led8-label { color: #5dade2; }
+
+    @media (max-width: 500px) {
+      h1 { font-size: 24px; }
+      .dashboard { padding: 15px; }
+      .slider-container label { font-size: 14px; }
+    }
+  </style>
+  <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+</head>
+<body>
+  <h1>Control LED Brightness</h1>
+  <div class="dashboard">
+    <div class="slider-container">
+      <label id="led1-label" for="led1">LED 1</label>
+      <input type="range" id="led1" min="0" max="255" value="0">
+    </div>
+    <div class="slider-container">
+      <label id="led2-label" for="led2">LED 2</label>
+      <input type="range" id="led2" min="0" max="255" value="0">
+    </div>
+    <div class="slider-container">
+      <label id="led3-label" for="led3">LED 3</label>
+      <input type="range" id="led3" min="0" max="255" value="0">
+    </div>
+    <div class="slider-container">
+      <label id="led4-label" for="led4">LED 4</label>
+      <input type="range" id="led4" min="0" max="255" value="0">
+    </div>
+    <div class="slider-container">
+      <label id="led5-label" for="led5">LED 5</label>
+      <input type="range" id="led5" min="0" max="255" value="0">
+    </div>
+    <div class="slider-container">
+      <label id="led6-label" for="led6">LED 6</label>
+      <input type="range" id="led6" min="0" max="255" value="0">
+    </div>
+    <div class="slider-container">
+      <label id="led7-label" for="led7">LED 7</label>
+      <input type="range" id="led7" min="0" max="255" value="0">
+    </div>
+    <div class="slider-container">
+      <label id="led8-label" for="led8">LED 8</label>
+      <input type="range" id="led8" min="0" max="255" value="0">
+    </div>
+  </div>
+
+  <script>
+    const client = mqtt.connect('wss://broker.emqx.io:8084/mqtt');
+
+    client.on('connect', () => {
+      console.log('Connected to MQTT broker');
+      for (let i = 1; i <= 8; i++) {
+        client.subscribe('led/' + i);
+      }
+    });
+
+    client.on('message', (topic, message) => {
+      const ledNum = topic.split('/')[1];
+      const brightness = parseInt(message.toString(), 10);
+      const slider = document.getElementById('led' + ledNum);
+      if (slider) slider.value = brightness;
+    });
+
+    for (let i = 1; i <= 8; i++) {
+      const slider = document.getElementById('led' + i);
+      slider.addEventListener('input', () => {
+        const value = slider.value;
+        client.publish('led/' + i, value.toString());
+      });
+    }
+  </script>
+</body>
+</html>
