@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LED Dashboard - Modern UI</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: 'Inter', sans-serif;
+      background: url('https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1350&q=80') no-repeat center center fixed;
+      background-size: cover;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      padding: 20px;
+      color: #fff;
+    }
+
+    h1 {
+      margin: 20px 0 10px 0;
+      font-size: 28px;
+      text-align: center;
+      text-shadow: 2px 2px 6px rgba(0, 0, 0, 0.7);
+    }
+
+    .dashboard {
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(15px);
+      border-radius: 20px;
+      padding: 25px;
+      width: 100%;
+      max-width: 420px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    }
+
+    .temp-container {
+      display: flex;
+      justify-content: space-around;
+      margin-bottom: 20px;
+    }
+
+    .temp-card {
+      background: rgba(255,255,255,0.15);
+      border-radius: 12px;
+      padding: 15px 20px;
+      text-align: center;
+      min-width: 120px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+      transition: background 0.3s;
+    }
+
+    .temp-value {
+      font-size: 24px;
+      font-weight: 600;
+      margin-top: 5px;
+    }
+
+    .slider-container {
+      margin: 20px 0;
+      text-align: left;
+    }
+
+    .slider-container label {
+      display: block;
+      margin-bottom: 10px;
+      font-size: 16px;
+      font-weight: 600;
+      color: #ffffff;
+      text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.6);
+    }
+
+    input[type="range"] {
+      -webkit-appearance: none;
+      width: 100%;
+      height: 12px;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.3);
+      outline: none;
+      transition: background 0.3s;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: #fff;
+      border: 2px solid #007bff;
+      cursor: pointer;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+      transition: transform 0.2s;
+    }
+
+    input[type="range"]::-webkit-slider-thumb:hover {
+      transform: scale(1.1);
+    }
+
+    /* Warna label LED */
+    #led1-label { color: #4169E1; }
+    #led2-label { color: #0000FF; }
+    #led3-label { color: #8A2BE2; }
+    #led4-label { color: #FF0000; }
+    #led5-label { color: #00FF00; }
+    #led6-label { color: #FFFFFF; }
+    #led7-label { color: #FFFFFF; }
+    #led8-label { color: #5dade2; }
+
+    @media (max-width: 500px) {
+      h1 { font-size: 24px; }
+      .dashboard { padding: 15px; }
+      .slider-container label { font-size: 14px; }
+    }
+  </style>
+
+  <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+</head>
+<body>
+  <h1>Control LED Brightness</h1>
+  <div class="dashboard">
+    <!-- Tampilan Suhu -->
+    <div class="temp-container">
+      <div id="temp1" class="temp-card">
+        <div>NTC 1</div>
+        <div id="temp1-value" class="temp-value">-- °C</div>
+      </div>
+      <div id="temp2" class="temp-card">
+        <div>NTC 2</div>
+        <div id="temp2-value" class="temp-value">-- °C</div>
+      </div>
+    </div>
+
+    <!-- Slider LED -->
+    <div class="slider-container">
+      <label id="led1-label" for="led1">Royal Blue</label>
+      <input type="range" id="led1" min="0" max="255" value="0">
+    </div>
+    <div class="slider-container">
+      <label id="led2-label" for="led2">Blue</label>
+      <input type="range" id="led2" min="0" max="255" value="0">
+    </div>
+    <div class="slider-container">
+      <label id="led3-label" for="led3">Violet</label>
+      <input type="range" id="led3" min="0" max="255" value="0">
+    </div>
+    <div class="slider-container">
+      <label id="led4-label" for="led4">Red</label>
+      <input type="range" id="led4" min="0" max="255" value="0">
+    </div>
+    <div class="slider-container">
+      <label id="led5-label" for="led5">Green</label>
+      <input type="range" id="led5" min="0" max="255" value="0">
+    </div>
+    <div class="slider-container">
+      <label id="led6-label" for="led6">White</label>
+      <input type="range" id="led6" min="0" max="255" value="0">
+    </div>
+    <div class="slider-container">
+      <label id="led7-label" for="led7">Sump</label>
+      <input type="range" id="led7" min="0" max="255" value="0">
+    </div>
+    <div class="slider-container">
+      <label id="led8-label" for="led8">Fan</label>
+      <input type="range" id="led8" min="0" max="255" value="0">
+    </div>
+  </div>
+
+  <script>
+    const client = mqtt.connect('wss://broker.emqx.io:8084/mqtt');
+
+    client.on('connect', () => {
+      console.log('Connected to MQTT broker');
+      for (let i = 1; i <= 8; i++) client.subscribe('led/' + i);
+      client.subscribe('suhu/ntc1');
+      client.subscribe('suhu/ntc2');
+    });
+
+    client.on('message', (topic, message) => {
+      const msg = message.toString();
+      if (topic.startsWith('led/')) {
+        const ledNum = topic.split('/')[1];
+        const brightness = parseInt(msg, 10);
+        const slider = document.getElementById('led' + ledNum);
+        if (slider) slider.value = brightness;
+      }
+
+      if (topic === 'suhu/ntc1') updateTemperature('temp1', msg);
+      if (topic === 'suhu/ntc2') updateTemperature('temp2', msg);
+    });
+
+    for (let i = 1; i <= 8; i++) {
+      const slider = document.getElementById('led' + i);
+      slider.addEventListener('input', () => {
+        const value = slider.value;
+        client.publish('led/' + i, value.toString());
+      });
+    }
+
+    function updateTemperature(id, value) {
+      const temp = parseFloat(value).toFixed(1);
+      const card = document.getElementById(id);
+      const valEl = document.getElementById(id + '-value');
+      valEl.textContent = `${temp} °C`;
+
+      // Warna indikator suhu
+      if (temp >= 45) card.style.background = "rgba(255,0,0,0.4)";
+      else if (temp >= 40) card.style.background = "rgba(255,215,0,0.3)";
+      else card.style.background = "rgba(173,216,230,0.25)";
+    }
+  </script>
+</body>
+</html>
