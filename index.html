@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LED Dashboard - Aquarium Controller</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+  <style>
+    *{box-sizing:border-box}
+    body{
+      margin:0;font-family:'Inter',sans-serif;
+      background:url('https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1350&q=80') no-repeat center center fixed;
+      background-size:cover;display:flex;flex-direction:column;align-items:center;min-height:100vh;padding:20px;color:#fff
+    }
+    h1{text-align:center;text-shadow:2px 2px 6px rgba(0,0,0,0.7)}
+    .dashboard{background:rgba(255,255,255,0.1);backdrop-filter:blur(15px);border-radius:20px;padding:25px;max-width:440px;width:100%;box-shadow:0 8px 24px rgba(0,0,0,0.4)}
+    .temp-container{display:flex;justify-content:space-around;margin-bottom:15px}
+    .temp-card{background:rgba(255,255,255,0.15);border-radius:12px;padding:15px 20px;text-align:center;min-width:120px;transition:.3s}
+    .temp-value{font-size:24px;font-weight:600;margin-top:5px}
+    #alert-box{display:none;background:rgba(255,0,0,0.7);padding:12px;border-radius:10px;text-align:center;font-weight:600;margin-bottom:15px;box-shadow:0 2px 8px rgba(0,0,0,0.4)}
+    .slider-container{margin:20px 0}
+    .slider-label{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+    input[type="number"]{width:60px;text-align:right;border:none;border-radius:6px;padding:4px;background:rgba(255,255,255,0.2);color:#fff;font-weight:600}
+    input[type="range"]{-webkit-appearance:none;width:100%;height:12px;border-radius:6px;background:rgba(255,255,255,0.3)}
+    input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;border-radius:50%;background:#fff;border:2px solid #007bff;cursor:pointer}
+  </style>
+</head>
+<body>
+  <h1>LED Aquarium Controller</h1>
+  <div class="dashboard">
+    <div class="temp-container">
+      <div id="temp1" class="temp-card"><div>Atas</div><div id="temp1-value" class="temp-value">-- °C</div></div>
+      <div id="temp2" class="temp-card"><div>Bawah</div><div id="temp2-value" class="temp-value">-- °C</div></div>
+    </div>
+
+    <div id="alert-box">⚠️ Suhu tinggi terdeteksi!</div>
+
+    <div id="led-controls"></div>
+  </div>
+
+  <script>
+    const client = mqtt.connect('wss://broker.emqx.io:8084/mqtt');
+    const ledNames=["Royal Blue","Blue","Violet","Red","Green","White","Sump","Fan"];
+    const container=document.getElementById('led-controls');
+
+    ledNames.forEach((n,i)=>{
+      const idx=i+1;
+      container.innerHTML+=`
+      <div class="slider-container">
+        <div class="slider-label">
+          <span>${n}</span>
+          <input type="number" id="led${idx}-num" min="0" max="100" value="0"> %
+        </div>
+        <input type="range" id="led${idx}" min="0" max="100" value="0">
+      </div>`;
+    });
+
+    client.on('connect',()=>{
+      console.log('MQTT Connected');
+      for(let i=1;i<=8;i++)client.subscribe('led/'+i);
+      client.subscribe('suhu/ntc1');
+      client.subscribe('suhu/ntc2');
+      client.subscribe('status/suhu');
+    });
+
+    client.on('message',(topic,message)=>{
+      const msg=message.toString();
+      if(topic.startsWith('led/')){
+        const ledNum=parseInt(topic.split('/')[1]);
+        const val255=parseInt(msg,10);
+        const percent=Math.round(val255/255*100);
+        const s=document.getElementById('led'+ledNum);
+        const n=document.getElementById('led'+ledNum+'-num');
+        if(s)s.value=percent;if(n)n.value=percent;
+      }
+      if(topic==='suhu/ntc1')updateTemp('temp1',msg);
+      if(topic==='suhu/ntc2')updateTemp('temp2',msg);
+      if(topic==='status/suhu')updateStatus(msg);
+    });
+
+    for(let i=1;i<=8;i++){
+      const s=document.getElementById('led'+i);
+      const n=document.getElementById('led'+i+'-num');
+      s.addEventListener('input',()=>{
+        n.value=s.value;
+        client.publish('led/'+i,Math.round(s.value*2.55).toString());
+      });
+      n.addEventListener('change',()=>{
+        let v=parseInt(n.value);
+        if(isNaN(v))v=0;v=Math.max(0,Math.min(100,v));
+        n.value=v;s.value=v;
+        client.publish('led/'+i,Math.round(v*2.55).toString());
+      });
+    }
+
+    function updateTemp(id,val){
+      const t=parseFloat(val).toFixed(1);
+      const c=document.getElementById(id);
+      document.getElementById(id+'-value').textContent=`${t} °C`;
+      if(t>=50)c.style.background='rgba(255,0,0,0.6)';
+      else if(t>=45)c.style.background='rgba(255,165,0,0.5)';
+      else c.style.background='rgba(255,255,255,0.15)';
+    }
+
+    function updateStatus(msg){
+      const box=document.getElementById('alert-box');
+      if(msg.startsWith('TINGGI')){
+        box.style.display='block';
+        const suhu=msg.split(':')[1].trim();
+        box.innerHTML=`⚠️ Suhu tinggi terdeteksi: ${suhu} °C<br>Semua LED dimatikan otomatis.`;
+      }else{
+        box.style.display='none';
+      }
+    }
+  </script>
+</body>
+</html>
