@@ -6,6 +6,7 @@
 <title>LED Aquarium Controller</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
 <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <style>
 *{box-sizing:border-box}
 body{
@@ -41,7 +42,7 @@ h1{
   border-radius:20px;
   padding:25px;
   width:100%;
-  max-width:440px;
+  max-width:460px;
   box-shadow:0 8px 24px rgba(0,0,0,0.4);
 }
 
@@ -135,11 +136,20 @@ button{
   font-weight:600;
 }
 button:hover{background:#3399ff}
+
+#chart-container{
+  margin-top:25px;
+  background:rgba(255,255,255,0.1);
+  padding:15px;
+  border-radius:15px;
+  box-shadow:0 4px 10px rgba(0,0,0,0.3);
+}
 </style>
 </head>
 <body>
 <h1>LED Aquarium Controller</h1>
 <div id="status">🔌 Menghubungkan ke MQTT...</div>
+
 <div class="dashboard">
   <div class="temp-container">
     <div class="temp-card">Atas<br><span id="temp1" class="temp-value">-- °C</span></div>
@@ -156,16 +166,21 @@ button:hover{background:#3399ff}
     <button id="setBatas">Simpan</button>
     <div id="batas-info" style="margin-top:8px;color:#ddd;font-size:14px;"></div>
   </div>
+
+  <div id="chart-container">
+    <h3 style="text-align:center;margin-bottom:10px;">Grafik Suhu Real-Time</h3>
+    <canvas id="tempChart" width="400" height="200"></canvas>
+  </div>
 </div>
 
 <script>
-// --- MQTT setup ---
+// ====== MQTT setup ======
 const client = mqtt.connect('wss://broker.emqx.io:8084/mqtt');
 const ledNames = ["Royal Blue","Blue","Violet","Red","Green","White","Sump","Fan"];
 const container = document.getElementById('led-controls');
 const statusText = document.getElementById('status');
 
-// --- Buat kontrol LED ---
+// ====== Buat slider kontrol LED ======
 ledNames.forEach((name,i)=>{
   const idx = i+1;
   container.innerHTML += `
@@ -175,11 +190,39 @@ ledNames.forEach((name,i)=>{
     </div>`;
 });
 
-// --- MQTT events ---
-client.on('connect',()=>{
-  statusText.innerHTML = "✅ Terhubung ke broker MQTT";
-  statusText.style.color = "#0f0";
+// ====== Chart.js setup ======
+const ctx = document.getElementById('tempChart').getContext('2d');
+const labels = [];
+const data1 = [];
+const data2 = [];
+const tempChart = new Chart(ctx,{
+  type:'line',
+  data:{
+    labels:labels,
+    datasets:[
+      {label:'Atas',data:data1,borderColor:'rgba(255,99,132,1)',tension:0.3,fill:false},
+      {label:'Bawah',data:data2,borderColor:'rgba(54,162,235,1)',tension:0.3,fill:false}
+    ]
+  },
+  options:{
+    scales:{y:{min:20,max:70}},
+    plugins:{legend:{labels:{color:'#fff'}}}
+  }
+});
 
+function updateChart(t1,t2){
+  const now = new Date().toLocaleTimeString();
+  labels.push(now);
+  data1.push(t1);
+  data2.push(t2);
+  if(labels.length>60){labels.shift();data1.shift();data2.shift();}
+  tempChart.update();
+}
+
+// ====== MQTT events ======
+client.on('connect',()=>{
+  statusText.innerHTML="✅ Terhubung ke broker MQTT";
+  statusText.style.color="#0f0";
   for(let i=1;i<=8;i++) client.subscribe('led/'+i);
   client.subscribe('suhu/ntc1');
   client.subscribe('suhu/ntc2');
@@ -188,82 +231,80 @@ client.on('connect',()=>{
 });
 
 client.on('reconnect',()=>{
-  statusText.innerHTML = "♻️ Menghubungkan ulang...";
-  statusText.style.color = "#ff0";
+  statusText.innerHTML="♻️ Menghubungkan ulang...";
+  statusText.style.color="#ff0";
 });
 
 client.on('offline',()=>{
-  statusText.innerHTML = "❌ Terputus dari MQTT";
-  statusText.style.color = "#f00";
+  statusText.innerHTML="❌ Terputus dari MQTT";
+  statusText.style.color="#f00";
 });
 
+let lastT1=0,lastT2=0;
 client.on('message',(topic,message)=>{
   const msg = message.toString();
 
   if(topic.startsWith('led/')){
     const num = parseInt(topic.split('/')[1]);
     const percent = Math.round(parseInt(msg)/255*100);
-    document.getElementById('led'+num).value = percent;
-    document.getElementById('led'+num+'-num').value = percent;
+    document.getElementById('led'+num).value=percent;
+    document.getElementById('led'+num+'-num').value=percent;
   }
 
-  if(topic === 'suhu/ntc1') updateTemp('temp1', msg);
-  if(topic === 'suhu/ntc2') updateTemp('temp2', msg);
-  if(topic === 'status/suhu') updateAlert(msg);
-  if(topic === 'status/batasSuhu') updateBatas(msg);
+  if(topic==='suhu/ntc1'){ lastT1=parseFloat(msg); updateTemp('temp1',msg); updateChart(lastT1,lastT2); }
+  if(topic==='suhu/ntc2'){ lastT2=parseFloat(msg); updateTemp('temp2',msg); updateChart(lastT1,lastT2); }
+  if(topic==='status/suhu') updateAlert(msg);
+  if(topic==='status/batasSuhu') updateBatas(msg);
 });
 
-// --- Fungsi suhu dan alert ---
-function updateTemp(id, val){
-  const t = parseFloat(val).toFixed(1);
-  const el = document.getElementById(id);
-  el.textContent = t + ' °C';
-  const card = el.parentElement;
-  if(t >= 50) card.style.background='rgba(255,0,0,0.4)';
-  else if(t >= 40) card.style.background='rgba(255,215,0,0.3)';
+// ====== Fungsi suhu & alert ======
+function updateTemp(id,val){
+  const t=parseFloat(val).toFixed(1);
+  const el=document.getElementById(id);
+  el.textContent=t+' °C';
+  const card=el.parentElement;
+  if(t>=50) card.style.background='rgba(255,0,0,0.4)';
+  else if(t>=40) card.style.background='rgba(255,215,0,0.3)';
   else card.style.background='rgba(255,255,255,0.15)';
 }
 
 function updateAlert(msg){
-  const box = document.getElementById('alert-box');
+  const box=document.getElementById('alert-box');
   if(msg.startsWith('TINGGI')){
-    const suhu = msg.split(':')[1];
-    box.innerHTML = `⚠️ Suhu tinggi: ${suhu} °C<br>Semua LED dimatikan.`;
-    box.style.display = 'block';
-  } else {
-    box.style.display = 'none';
-  }
+    const suhu=msg.split(':')[1];
+    box.innerHTML=`⚠️ Suhu tinggi: ${suhu} °C<br>Semua LED dimatikan.`;
+    box.style.display='block';
+  }else box.style.display='none';
 }
 
 function updateBatas(val){
-  document.getElementById('batasSuhu').value = parseFloat(val).toFixed(1);
-  document.getElementById('batas-info').innerText = 'Batas suhu saat ini: ' + val + ' °C';
+  document.getElementById('batasSuhu').value=parseFloat(val).toFixed(1);
+  document.getElementById('batas-info').innerText='Batas suhu saat ini: '+val+' °C';
 }
 
-// --- Slider & input control ---
+// ====== Slider dan input LED ======
 for(let i=1;i<=8;i++){
-  const s = document.getElementById('led'+i);
-  const n = document.getElementById('led'+i+'-num');
+  const s=document.getElementById('led'+i);
+  const n=document.getElementById('led'+i+'-num');
   s.addEventListener('input',()=>{
-    n.value = s.value;
-    client.publish('led/'+i, Math.round(s.value*2.55).toString());
+    n.value=s.value;
+    client.publish('led/'+i,Math.round(s.value*2.55).toString());
   });
   n.addEventListener('change',()=>{
-    let v = parseInt(n.value);
-    if(isNaN(v)) v = 0;
-    v = Math.min(100, Math.max(0, v));
-    n.value = v;
-    s.value = v;
-    client.publish('led/'+i, Math.round(v*2.55).toString());
+    let v=parseInt(n.value);
+    if(isNaN(v))v=0;
+    v=Math.min(100,Math.max(0,v));
+    n.value=v;s.value=v;
+    client.publish('led/'+i,Math.round(v*2.55).toString());
   });
 }
 
-// --- Set batas suhu ---
+// ====== Set batas suhu ======
 document.getElementById('setBatas').addEventListener('click',()=>{
-  const val = parseFloat(document.getElementById('batasSuhu').value);
-  if(val >= 30 && val <= 90){
-    client.publish('set/batasSuhu', val.toString());
-    alert('Batas suhu dikirim ke ESP32: ' + val + ' °C');
+  const val=parseFloat(document.getElementById('batasSuhu').value);
+  if(val>=30 && val<=90){
+    client.publish('set/batasSuhu',val.toString());
+    alert('Batas suhu dikirim ke ESP32: '+val+' °C');
   }else{
     alert('Masukkan nilai antara 30–90 °C');
   }
