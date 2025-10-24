@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LED Aquarium Dashboard</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #101820;
+      color: #eee;
+      margin: 0;
+      padding: 20px;
+    }
+    h1 { text-align: center; }
+    select, button {
+      padding: 8px 12px;
+      margin: 5px;
+      border-radius: 6px;
+      border: none;
+      font-size: 16px;
+    }
+    button { cursor: pointer; background: #007bff; color: white; }
+    button:hover { background: #0056b3; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 15px;
+    }
+    th, td {
+      border: 1px solid #555;
+      padding: 6px;
+      text-align: center;
+    }
+    th { background: #222; }
+    td input {
+      width: 60px;
+      text-align: center;
+      background: #222;
+      border: 1px solid #555;
+      color: #eee;
+    }
+    .top-bar {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+  </style>
+</head>
+<body>
+  <h1>LED Aquarium Dashboard</h1>
+
+  <div class="top-bar">
+    <label for="modeSelect">Mode:</label>
+    <select id="modeSelect">
+      <option value="manual">Manual</option>
+      <option value="auto">Otomatis</option>
+    </select>
+    <button id="startAuto">Start Otomatis</button>
+  </div>
+
+  <table id="scheduleTable">
+    <thead>
+      <tr>
+        <th>Waktu</th>
+        <th>Royal Blue</th>
+        <th>Blue</th>
+        <th>Violet</th>
+        <th>Red</th>
+        <th>Green</th>
+        <th>White</th>
+        <th>Sump</th>
+        <th>Fan</th>
+      </tr>
+    </thead>
+    <tbody id="scheduleBody"></tbody>
+  </table>
+
+  <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+  <script>
+    // === KONFIGURASI MQTT ===
+    const broker = "wss://broker.emqx.io:8084/mqtt";  // ganti sesuai broker kamu
+    const options = {
+      clean: true,
+      connectTimeout: 4000,
+      clientId: "dashboard_" + Math.random().toString(16).substr(2, 8),
+    };
+    const client = mqtt.connect(broker, options);
+
+    client.on("connect", () => {
+      console.log("✅ Terhubung ke broker MQTT");
+    });
+
+    // === INISIALISASI TABEL ===
+    const scheduleBody = document.getElementById("scheduleBody");
+    const times = [];
+    for (let h = 7; h <= 16; h++) {
+      for (let m = 0; m < 60; m += 30) {
+        const hh = String(h).padStart(2, "0");
+        const mm = String(m).padStart(2, "0");
+        times.push(`${hh}:${mm}`);
+      }
+    }
+
+    times.forEach(time => {
+      const row = document.createElement("tr");
+      const tdTime = document.createElement("td");
+      tdTime.textContent = time;
+      row.appendChild(tdTime);
+
+      for (let i = 0; i < 8; i++) {
+        const td = document.createElement("td");
+        const input = document.createElement("input");
+        input.type = "number";
+        input.min = 0;
+        input.max = 100;
+        input.value = 0;
+        input.addEventListener("change", () => {
+          const val = Math.min(100, Math.max(0, input.value));
+          const ledIndex = i + 1; // LED 1–8
+          const brightness = Math.round(val * 2.55); // 0–255
+          const topic = `auto/set/${time}/${ledIndex}`;
+          client.publish(topic, String(brightness));
+          console.log(`Publish: ${topic} → ${brightness}`);
+        });
+        td.appendChild(input);
+        row.appendChild(td);
+      }
+      scheduleBody.appendChild(row);
+    });
+
+    // === MODE SELECT ===
+    const modeSelect = document.getElementById("modeSelect");
+    modeSelect.addEventListener("change", () => {
+      const mode = modeSelect.value;
+      client.publish("mode/set", mode);
+      console.log("Mode set:", mode);
+    });
+
+    // === START OTOMATIS ===
+    document.getElementById("startAuto").addEventListener("click", () => {
+      client.publish("auto/start", "1");
+      console.log("Mulai mode otomatis");
+    });
+  </script>
+</body>
+</html>
