@@ -1,0 +1,388 @@
+request->send_P(200, "text/html", R"rawliteral(
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>LED Aquarium Controller - Auto/Manual</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:'Inter',sans-serif;background:url('https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1350&q=80') no-repeat center center fixed;background-size:cover;display:flex;flex-direction:column;align-items:center;min-height:100vh;padding:20px;color:#fff}
+h1{margin:20px 0 10px;font-size:26px;text-align:center;text-shadow:2px 2px 6px rgba(0,0,0,0.7)}
+#status{font-size:13px;color:#0f0;margin-bottom:10px;text-shadow:1px 1px 3px rgba(0,0,0,0.5)}
+.dashboard{background:rgba(255,255,255,0.08);backdrop-filter:blur(12px);border-radius:16px;padding:18px;width:100%;max-width:980px;box-shadow:0 8px 24px rgba(0,0,0,0.35)}
+.row{display:flex;gap:12px}
+.col{flex:1}
+.temp-container{display:flex;justify-content:space-around;margin-bottom:14px}
+.temp-card{background:rgba(255,255,255,0.12);border-radius:10px;padding:12px 14px;text-align:center;min-width:110px;box-shadow:0 4px 10px rgba(0,0,0,0.3)}
+.temp-value{font-size:20px;font-weight:600;margin-top:4px}
+.controls{margin-top:10px}
+.slider-container{margin:10px 0}
+.slider-container label{display:block;font-size:14px;font-weight:600;margin-bottom:6px;color:#fff;text-shadow:1px 1px 2px rgba(0,0,0,0.6)}
+input[type=range]{-webkit-appearance:none;width:100%;height:10px;border-radius:6px;background:rgba(255,255,255,0.25);outline:none}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:20px;border-radius:50%;background:#fff;border:2px solid #007bff;cursor:pointer}
+input[type=number]{width:64px;border:none;border-radius:8px;text-align:center;padding:4px;background:rgba(255,255,255,0.18);color:#fff}
+#alert-box{display:none;background:rgba(255,0,0,0.45);padding:8px;margin:10px 0;border-radius:8px;text-align:center;font-weight:700}
+#modeBar{margin:10px 0;display:flex;gap:10px;align-items:center}
+.modeBtn{padding:8px 12px;border-radius:8px;border:none;background:rgba(255,255,255,0.06);color:#fff;cursor:pointer}
+.modeBtn.active{background:#007bff}
+#scheduleWrap{margin-top:12px;overflow:auto;background:rgba(255,255,255,0.03);padding:8px;border-radius:8px}
+table{border-collapse:collapse;width:100%}
+th,td{border:1px solid rgba(255,255,255,0.08);padding:6px;text-align:center;font-size:12px}
+th{background:rgba(255,255,255,0.04)}
+.small{font-size:12px;color:#ddd}
+#autoControlButtons{margin-top:8px;display:flex;gap:8px;align-items:center}
+#chart-container{margin-top:18px;background:rgba(255,255,255,0.04);padding:12px;border-radius:10px}
+.saveNote{font-size:12px;color:#ccc;margin-top:6px}
+</style>
+</head>
+<body>
+<h1>LED Aquarium Controller</h1>
+<div id="status">Connecting to MQTT...</div>
+
+<div class="dashboard">
+  <div class="temp-container">
+    <div class="temp-card">Top<br><span id="temp1" class="temp-value">-- &deg;C</span></div>
+    <div class="temp-card">Bottom<br><span id="temp2" class="temp-value">-- &deg;C</span></div>
+  </div>
+
+  <div id="alert-box" role="alert" aria-live="assertive"></div>
+
+  <div id="modeBar">
+    <div>Mode:</div>
+    <button id="btnManual" class="modeBtn active">Manual</button>
+    <button id="btnAuto" class="modeBtn">Auto</button>
+    <div style="margin-left:auto" class="small">Auto schedule: 07:00 - 16:00 every 30 min</div>
+  </div>
+
+  <div id="manualArea">
+    <div id="led-controls"></div>
+  </div>
+
+  <div id="autoArea" style="display:none">
+    <div id="scheduleWrap">
+      <div class="small">Fill level (0-100) for each LED at each time slot. Values are percent.</div>
+      <table id="scheduleTable" aria-label="Schedule table">
+        <thead id="scheduleHead"></thead>
+        <tbody id="scheduleBody"></tbody>
+      </table>
+      <div class="saveNote">Schedule is stored in this browser (local storage).</div>
+    </div>
+
+    <div id="autoControlButtons">
+      <button id="startAuto" class="modeBtn">Start Otomatis</button>
+      <button id="stopAuto" class="modeBtn" style="display:none;background:#c0392b">Stop</button>
+      <div id="autoStatus" class="small" style="margin-left:8px;color:#ddd"></div>
+    </div>
+  </div>
+
+  <div style="margin-top:12px;display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+    <div style="flex:1;min-width:220px" id="batasBox">
+      <h3 style="margin:0 0 8px 0">Batas Suhu Maksimum</h3>
+      <input type="number" id="batasSuhu" min="30" max="90" value="50"> &deg;C
+      <button id="setBatas" class="modeBtn" style="margin-left:8px">Simpan</button>
+      <div id="batas-info" class="small" style="margin-top:6px"></div>
+    </div>
+    <div style="width:320px">
+      <div id="chart-container"><canvas id="tempChart" width="320" height="140"></canvas></div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ======= Config ======= */
+const MQTT_URL = 'wss://broker.emqx.io:8084/mqtt';
+const ledNames = ["Royal Blue","Blue","Violet","Red","Green","White","Sump","Fan"];
+const startHour = 7;
+const endHour = 16;
+const slotMinutes = 30; // per 30 menit
+const slotsCount = ((endHour - startHour) * 60) / slotMinutes + 1; // 19 slots
+/* ====================== */
+
+const client = mqtt.connect(MQTT_URL);
+const statusEl = document.getElementById('status');
+const alertBox = document.getElementById('alert-box');
+
+let lastT1 = 0, lastT2 = 0;
+
+/* --- build manual sliders --- */
+const controls = document.getElementById('led-controls');
+ledNames.forEach((name, i) => {
+  const idx = i+1;
+  const wrap = document.createElement('div');
+  wrap.className = 'slider-container';
+  wrap.innerHTML = `<label>${name} &nbsp; <input type="number" id="led${idx}-num" min="0" max="100" value="0">%</label>
+    <input type="range" id="led${idx}" min="0" max="100" value="0">`;
+  controls.appendChild(wrap);
+
+  const slider = wrap.querySelector('input[type="range"]');
+  const input = wrap.querySelector('input[type="number"]');
+
+  slider.addEventListener('input', () => {
+    input.value = slider.value;
+    publishLED(idx, Math.round(slider.value * 2.55));
+  });
+  input.addEventListener('change', () => {
+    let v = parseInt(input.value) || 0;
+    v = Math.max(0, Math.min(100, v));
+    input.value = v;
+    slider.value = v;
+    publishLED(idx, Math.round(v * 2.55));
+  });
+});
+
+/* --- build schedule table (rows: LEDs, cols: slots) --- */
+const scheduleHead = document.getElementById('scheduleHead');
+const scheduleBody = document.getElementById('scheduleBody');
+
+function formatSlotLabel(slotIndex) {
+  const totalMinutes = startHour * 60 + slotIndex * slotMinutes;
+  const h = Math.floor(totalMinutes / 60);
+  const m = totalMinutes % 60;
+  return String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0');
+}
+
+// build header
+let headHtml = '<tr><th>LED \\ Time</th>';
+for (let s = 0; s < slotsCount; s++) headHtml += '<th>' + formatSlotLabel(s) + '</th>';
+headHtml += '</tr>';
+scheduleHead.innerHTML = headHtml;
+
+// build body rows
+let bodyHtml = '';
+for (let r = 0; r < ledNames.length; r++) {
+  bodyHtml += '<tr><th style="text-align:left;padding-left:8px">' + (r+1) + '. ' + ledNames[r] + '</th>';
+  for (let s = 0; s < slotsCount; s++) {
+    bodyHtml += `<td><input type="number" id="sc_r${r}_s${s}" min="0" max="100" value="0" style="width:56px"></td>`;
+  }
+  bodyHtml += '</tr>';
+}
+scheduleBody.innerHTML = bodyHtml;
+
+/* load schedule from localStorage */
+function loadSchedule() {
+  const stored = localStorage.getItem('led_schedule_v1');
+  if (!stored) return;
+  try {
+    const obj = JSON.parse(stored);
+    for (let r=0;r<ledNames.length;r++){
+      for (let s=0;s<slotsCount;s++){
+        const el = document.getElementById(`sc_r${r}_s${s}`);
+        if (el && obj[r] && typeof obj[r][s] !== 'undefined') el.value = obj[r][s];
+      }
+    }
+  } catch(e){ console.warn('invalid schedule in storage', e); }
+}
+function saveSchedule() {
+  const obj = [];
+  for (let r=0;r<ledNames.length;r++){
+    obj[r] = [];
+    for (let s=0;s<slotsCount;s++){
+      const el = document.getElementById(`sc_r${r}_s${s}`);
+      obj[r][s] = el ? parseInt(el.value)||0 : 0;
+    }
+  }
+  localStorage.setItem('led_schedule_v1', JSON.stringify(obj));
+}
+
+/* --- MQTT handlers --- */
+client.on('connect', () => {
+  statusEl.textContent = 'Connected to MQTT';
+  statusEl.style.color = '#0f0';
+  for (let i=1;i<=8;i++) client.subscribe('led/'+i);
+  client.subscribe('suhu/ntc1');
+  client.subscribe('suhu/ntc2');
+  client.subscribe('status/suhu');
+  client.subscribe('status/batasSuhu');
+  // ask for current batasSuhu by relying on ESP to publish periodically
+});
+client.on('reconnect',()=>{ statusEl.textContent='Reconnecting...'; statusEl.style.color='#ff0'; });
+client.on('offline',()=>{ statusEl.textContent='Offline'; statusEl.style.color='#f00'; });
+
+client.on('message', (topic, message) => {
+  const msg = message.toString();
+  if (topic.startsWith('led/')) {
+    const n = parseInt(topic.split('/')[1]);
+    const pct = Math.round(parseInt(msg) / 255 * 100);
+    const s = document.getElementById('led'+n);
+    const num = document.getElementById('led'+n+'-num');
+    if (s) s.value = pct;
+    if (num) num.value = pct;
+  } else if (topic === 'suhu/ntc1') {
+    lastT1 = parseFloat(msg);
+    updateTemp('temp1', msg);
+    updateChart(lastT1, lastT2);
+  } else if (topic === 'suhu/ntc2') {
+    lastT2 = parseFloat(msg);
+    updateTemp('temp2', msg);
+    updateChart(lastT1, lastT2);
+  } else if (topic === 'status/suhu') {
+    updateAlert(msg);
+  } else if (topic === 'status/batasSuhu') {
+    updateBatas(msg);
+  }
+});
+
+/* publish helper */
+function publishLED(n, value255) {
+  if (!client.connected) return;
+  client.publish('led/' + n, String(value255));
+}
+
+/* ===== temperature UI ===== */
+function updateTemp(id, val) {
+  const t = parseFloat(val).toFixed(1);
+  const el = document.getElementById(id);
+  if (el) el.textContent = t + ' \u00B0C';
+  const card = el && el.parentElement;
+  if (card) {
+    if (t >= 50) card.style.background = 'rgba(255,0,0,0.45)';
+    else if (t >= 40) card.style.background = 'rgba(255,165,0,0.35)';
+    else card.style.background = 'rgba(255,255,255,0.12)';
+  }
+}
+function updateAlert(msg) {
+  if (!alertBox) return;
+  if (msg.startsWith('TINGGI')) {
+    const parts = msg.split(':');
+    const val = parts.length>1?parts[1].trim():'?';
+    alertBox.innerHTML = 'WARNING: High temp: ' + val + ' &deg;C. All LEDs turned off.';
+    alertBox.style.display = 'block';
+  } else {
+    alertBox.style.display = 'none';
+  }
+}
+function updateBatas(val) {
+  const el = document.getElementById('batasSuhu');
+  if (el) el.value = parseFloat(val).toFixed(1);
+  const info = document.getElementById('batas-info');
+  if (info) info.textContent = 'Current limit: ' + val + ' \u00B0C';
+}
+
+/* ===== Chart.js real-time ===== */
+const ctx = document.getElementById('tempChart').getContext('2d');
+const labels = [], dataA = [], dataB = [];
+const tempChart = new Chart(ctx, {
+  type:'line',
+  data:{ labels: labels, datasets:[
+    {label:'Top', data: dataA, borderColor:'rgba(255,99,132,1)', tension:0.25, fill:false},
+    {label:'Bottom', data: dataB, borderColor:'rgba(54,162,235,1)', tension:0.25, fill:false}
+  ]},
+  options:{scales:{y:{min:15,max:70}}, plugins:{legend:{labels:{color:'#fff'}}}
+  }
+});
+function updateChart(v1,v2){
+  const now = new Date();
+  const label = now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0');
+  labels.push(label); dataA.push(v1); dataB.push(v2);
+  if (labels.length>60){ labels.shift(); dataA.shift(); dataB.shift(); }
+  tempChart.update();
+}
+
+/* ===== Auto mode engine ===== */
+let autoRunning = false;
+let currentSlot = -1;
+let autoTimer = null;
+
+function getSlotIndexForDate(d){
+  const totalMinutes = (d.getHours()*60 + d.getMinutes());
+  const startMinutes = startHour * 60;
+  const diff = totalMinutes - startMinutes;
+  if (diff < 0) return -1;
+  const idx = Math.floor(diff / slotMinutes);
+  if (idx < 0 || idx >= slotsCount) return -1;
+  return idx;
+}
+
+function publishScheduleForSlot(slotIdx){
+  saveSchedule(); // save before publish
+  // for each LED row r publish value at slotIdx
+  for (let r=0;r<ledNames.length;r++){
+    const el = document.getElementById(`sc_r${r}_s${slotIdx}`);
+    const valPercent = el ? (parseInt(el.value)||0) : 0;
+    publishLED(r+1, Math.round(valPercent * 2.55));
+  }
+  const autoStatus = document.getElementById('autoStatus');
+  if (autoStatus) autoStatus.textContent = 'Published slot ' + formatSlotLabel(slotIdx) + ' (values applied)';
+}
+
+function startAuto(){
+  if (autoRunning) return;
+  saveSchedule();
+  const now = new Date();
+  const s = getSlotIndexForDate(now);
+  if (s < 0) { alert('Current time is outside schedule range (07:00 - 16:00).'); return; }
+  publishScheduleForSlot(s);
+  currentSlot = s;
+  autoRunning = true;
+  document.getElementById('startAuto').style.display='none';
+  document.getElementById('stopAuto').style.display='inline-block';
+  document.getElementById('autoStatus').textContent = 'Auto running. Current slot: ' + formatSlotLabel(currentSlot);
+
+  // set interval to check every 20 seconds for slot change
+  autoTimer = setInterval(()=>{
+    const now2 = new Date();
+    const s2 = getSlotIndexForDate(now2);
+    if (s2 !== currentSlot && s2 >= 0) {
+      currentSlot = s2;
+      publishScheduleForSlot(currentSlot);
+      document.getElementById('autoStatus').textContent = 'Auto running. Current slot: ' + formatSlotLabel(currentSlot);
+    }
+    // if now out of range, stop automatically
+    if (s2 < 0) {
+      stopAuto();
+      document.getElementById('autoStatus').textContent = 'Auto stopped (outside schedule range)';
+    }
+  }, 20000);
+}
+
+function stopAuto(){
+  if (!autoRunning) return;
+  autoRunning = false;
+  if (autoTimer) { clearInterval(autoTimer); autoTimer = null; }
+  currentSlot = -1;
+  document.getElementById('startAuto').style.display='inline-block';
+  document.getElementById('stopAuto').style.display='none';
+  document.getElementById('autoStatus').textContent = 'Auto stopped';
+}
+
+/* Hook start/stop buttons */
+document.getElementById('startAuto').addEventListener('click', startAuto);
+document.getElementById('stopAuto').addEventListener('click', stopAuto);
+
+/* Mode buttons */
+document.getElementById('btnManual').addEventListener('click', ()=>{
+  document.getElementById('btnManual').classList.add('active');
+  document.getElementById('btnAuto').classList.remove('active');
+  document.getElementById('manualArea').style.display='block';
+  document.getElementById('autoArea').style.display='none';
+  stopAuto();
+});
+
+document.getElementById('btnAuto').addEventListener('click', ()=>{
+  document.getElementById('btnAuto').classList.add('active');
+  document.getElementById('btnManual').classList.remove('active');
+  document.getElementById('manualArea').style.display='none';
+  document.getElementById('autoArea').style.display='block';
+});
+
+/* Batas suhu set */
+document.getElementById('setBatas').addEventListener('click', ()=>{
+  const val = parseFloat(document.getElementById('batasSuhu').value);
+  if (isNaN(val) || val < 30 || val > 90) { alert('Masukkan nilai antara 30 - 90'); return; }
+  client.publish('set/batasSuhu', String(val));
+  alert('Batas suhu dikirim: ' + val + ' C');
+});
+
+/* load schedule on start */
+loadSchedule();
+
+/* restore manual sliders from server? they will update via 'led/x' messages from ESP when connect */
+/* end */
+</script>
+</body>
+</html>
+)rawliteral");
