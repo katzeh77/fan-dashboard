@@ -1,167 +1,481 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="id">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ESP32 LED Dashboard</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>ESP32 LED Dashboard — KatzeH</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Paho MQTT (WebSocket) untuk optional IP discovery via retained MQTT -->
+  <script src="https://unpkg.com/paho-mqtt@1.1.0/paho-mqtt-min.js"></script>
 </head>
-<body class="bg-gray-900 text-gray-100 min-h-screen flex flex-col items-center">
-  <header class="py-4 text-center">
-    <h1 class="text-3xl font-bold text-blue-400">ESP32 LED Controller Dashboard</h1>
-    <p class="text-gray-400 text-sm">Monitor & Kontrol LED Aquarium</p>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col items-center">
+  <header class="w-full max-w-6xl p-4 flex items-center justify-between">
+    <div>
+      <h1 class="text-2xl font-semibold text-cyan-400">ESP32 LED Controller</h1>
+      <p class="text-sm text-slate-400">Dashboard (GitHub Pages) — hubungkan ke ESP32 lokal</p>
+    </div>
+
+    <div class="flex items-center space-x-3">
+      <div id="modeBadge" class="px-3 py-1 rounded-full bg-gray-700 text-sm">Mode: —</div>
+      <button id="findBtn" onclick="findESP()" class="bg-gray-700 hover:bg-gray-600 px-3 py-1 rounded">🔍 Cari IP</button>
+    </div>
   </header>
 
-  <main class="w-full max-w-6xl p-4">
-    <!-- ESP32 Connection -->
-    <div class="bg-gray-800 rounded-2xl p-4 mb-6 shadow-lg">
-      <h2 class="text-xl font-semibold mb-2">Koneksi ke ESP32</h2>
-      <div class="flex items-center space-x-2">
-        <input id="espIp" type="text" placeholder="Masukkan IP ESP32 (contoh: 192.168.1.120)" class="w-full px-3 py-2 rounded-lg text-gray-900" />
-        <button onclick="connectESP()" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg font-semibold">Hubungkan</button>
+  <main class="w-full max-w-6xl p-4 grid gap-6">
+    <!-- Connection card -->
+    <section class="bg-gray-800 rounded-2xl p-4 shadow">
+      <h2 class="text-lg font-semibold">Koneksi ESP32</h2>
+      <div class="mt-3 flex flex-col md:flex-row md:items-center md:space-x-3 gap-3">
+        <input id="espIp" type="text" placeholder="Masukkan IP ESP32 (contoh: 192.168.1.120)" class="flex-1 px-3 py-2 rounded bg-slate-700 text-slate-100" />
+        <button onclick="connectESP()" class="bg-cyan-600 hover:bg-cyan-500 px-4 py-2 rounded font-medium">Hubungkan</button>
+        <button onclick="clearConnection()" class="bg-red-600 hover:bg-red-500 px-4 py-2 rounded font-medium">Putus</button>
       </div>
-      <p id="connStatus" class="text-sm mt-2 text-gray-400">Belum terhubung</p>
-    </div>
+      <p class="text-sm text-slate-400 mt-2" id="connStatus">Belum terhubung</p>
 
-    <!-- Mode Control -->
-    <div class="bg-gray-800 rounded-2xl p-4 mb-6 shadow-lg">
-      <h2 class="text-xl font-semibold mb-2">Mode Kontrol</h2>
-      <div class="flex space-x-3">
-        <button onclick="setMode('manual')" class="bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg font-semibold">Mode Manual</button>
-        <button onclick="setMode('autoset')" class="bg-yellow-600 hover:bg-yellow-700 px-4 py-2 rounded-lg font-semibold">Setup Otomatis</button>
-        <button onclick="startAuto()" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg font-semibold">Mulai Otomatis</button>
-        <button onclick="stopAuto()" class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg font-semibold">Stop</button>
+      <div class="mt-3 grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div class="bg-slate-700 p-3 rounded">
+          <div class="text-xs text-slate-400">IP Terdeteksi</div>
+          <div id="detectedIp" class="font-mono mt-1">—</div>
+        </div>
+        <div class="bg-slate-700 p-3 rounded">
+          <div class="text-xs text-slate-400">Waktu Lokal</div>
+          <div id="localClock" class="font-mono mt-1">--:--:--</div>
+        </div>
+        <div class="bg-slate-700 p-3 rounded">
+          <div class="text-xs text-slate-400">Suhu (NTC)</div>
+          <div id="tempStatus" class="font-mono mt-1">—</div>
+        </div>
       </div>
-    </div>
+    </section>
 
-    <!-- Manual LED Control -->
-    <div class="bg-gray-800 rounded-2xl p-4 mb-6 shadow-lg">
-      <h2 class="text-xl font-semibold mb-3">Kontrol LED Manual</h2>
-      <div id="ledControls" class="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <!-- sliders will be added here dynamically -->
+    <!-- MQTT WebSocket optional -->
+    <section class="bg-gray-800 rounded-2xl p-4 shadow">
+      <h2 class="text-lg font-semibold">(Opsional) MQTT over WebSocket — auto-detect retained IP</h2>
+      <p class="text-sm text-slate-400">Gunakan jika broker MQTT-mu mendukung WebSocket. Contoh: <code>wss://broker.emqx.io:8084/mqtt</code></p>
+      <div class="mt-3 grid grid-cols-1 md:grid-cols-3 gap-3">
+        <input id="mqttWsUrl" class="px-3 py-2 rounded bg-slate-700" placeholder="wss://broker:port/mqtt" />
+        <input id="mqttTopic" class="px-3 py-2 rounded bg-slate-700" placeholder="esp32/ip (default)" value="esp32/ip" />
+        <div class="flex gap-2">
+          <button onclick="mqttConnect()" class="bg-emerald-600 hover:bg-emerald-500 px-3 py-2 rounded">Connect MQTT</button>
+          <button onclick="mqttDisconnect()" class="bg-rose-600 hover:bg-rose-500 px-3 py-2 rounded">Disconnect</button>
+        </div>
       </div>
-    </div>
+      <p class="text-xs text-slate-400 mt-2">Status MQTT: <span id="mqttStatus">disconnected</span></p>
+    </section>
 
-    <!-- Auto Schedule Table -->
-    <div class="bg-gray-800 rounded-2xl p-4 mb-6 shadow-lg overflow-x-auto">
-      <h2 class="text-xl font-semibold mb-3">Jadwal Otomatis (07:00 - 16:00 per ½ jam)</h2>
+    <!-- Controls -->
+    <section class="bg-gray-800 rounded-2xl p-4 shadow">
+      <h2 class="text-lg font-semibold">Kontrol</h2>
+      <div class="mt-3 grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Manual sliders -->
+        <div class="bg-slate-700 p-3 rounded">
+          <h3 class="font-semibold mb-2">Manual — 8 Channel</h3>
+          <div id="ledControls" class="grid grid-cols-1 md:grid-cols-2 gap-3"></div>
+        </div>
+
+        <!-- Schedule + actions -->
+        <div class="bg-slate-700 p-3 rounded">
+          <h3 class="font-semibold mb-2">Otomatis — Jadwal & Kontrol</h3>
+          <div class="flex gap-2 mb-3">
+            <button onclick="setMode('manual')" class="px-3 py-2 rounded bg-green-600">Mode Manual</button>
+            <button onclick="setMode('autoset')" class="px-3 py-2 rounded bg-yellow-600">Setup Auto</button>
+            <button onclick="startAuto()" class="px-3 py-2 rounded bg-blue-600">Start Auto</button>
+            <button onclick="stopAuto()" class="px-3 py-2 rounded bg-red-600">Stop</button>
+          </div>
+          <div class="text-xs text-slate-300">Klik <b>Simpan Jadwal</b> untuk mengirim ke ESP32</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Schedule table -->
+    <section class="bg-gray-800 rounded-2xl p-4 shadow overflow-auto">
+      <h2 class="text-lg font-semibold mb-2">Jadwal Otomatis (07:00 - 16:00, per 30 menit)</h2>
       <form id="scheduleForm">
-        <table class="border border-gray-700 w-full text-center text-sm">
-          <thead id="theadRow" class="bg-gray-700"></thead>
-          <tbody id="scheduleTable"></tbody>
+        <table class="w-full text-sm border-collapse border border-slate-700">
+          <thead id="theadRow" class="bg-slate-700"></thead>
+          <tbody id="scheduleTable" class="bg-slate-800"></tbody>
         </table>
-        <div class="text-right mt-4">
-          <button type="button" onclick="saveSchedule()" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg font-semibold">Simpan Jadwal</button>
+
+        <div class="mt-3 flex justify-end gap-2">
+          <button type="button" onclick="loadScheduleFromESP()" class="px-3 py-2 rounded bg-slate-600">Muat dari ESP</button>
+          <button type="button" onclick="saveSchedule()" class="px-3 py-2 rounded bg-cyan-600">Simpan Jadwal</button>
         </div>
       </form>
-    </div>
+    </section>
 
-    <!-- Status Info -->
-    <div class="bg-gray-800 rounded-2xl p-4 shadow-lg text-sm text-gray-300">
-      <p><b>Waktu Sekarang:</b> <span id="clock">--:--:--</span></p>
-      <p><b>Status Suhu:</b> <span id="tempStatus">Tidak ada data</span></p>
-    </div>
+    <!-- Footer status -->
+    <section class="bg-gray-800 rounded-2xl p-4 shadow text-sm">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div>Last action: <span id="lastAction">—</span></div>
+        <div>ESP status: <span id="espStatus">—</span></div>
+        <div>Notes: <span id="notes">Pastikan ESP32 dan browser berada di jaringan yang sama.</span></div>
+      </div>
+    </section>
   </main>
 
-  <footer class="py-4 text-gray-500 text-xs text-center">
-    © 2025 ESP32 LED Controller by KatzeH
+  <footer class="w-full max-w-6xl p-4 text-center text-xs text-slate-500">
+    © 2025 KatzeH — ESP32 LED Dashboard
   </footer>
 
-  <script>
-    let espIP = "";
-    const slotCount = 19;
-    const startHour = 7;
+<script>
+/* ======= Config ======= */
+const SLOT_COUNT = 19;
+const START_HOUR = 7;
 
-    function connectESP() {
-      espIP = document.getElementById("espIp").value.trim();
-      if (!espIP) return alert("Masukkan IP ESP32!");
-      document.getElementById("connStatus").innerText = "Terhubung ke http://" + espIP;
-      loadSchedule();
-      initSliders();
-    }
+/* ======= State ======= */
+let espIP = "";
+let connected = false;
+let mqttClient = null;
 
-    function api(path, method="GET", body=null) {
-      if (!espIP) return alert("Belum terhubung ke ESP32!");
-      return fetch(`http://${espIP}${path}`, {
-        method,
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body
-      });
-    }
+/* ======= Helpers ======= */
+function setConnStatus(s) {
+  document.getElementById('connStatus').innerText = s;
+}
+function setLastAction(s) {
+  document.getElementById('lastAction').innerText = s;
+}
+function setESPStatus(s) {
+  document.getElementById('espStatus').innerText = s;
+}
+function setModeBadge(mode) {
+  const el = document.getElementById('modeBadge');
+  let text = "Mode: —"; let color = "bg-gray-700";
+  if (mode === "0" || mode === "manual") { text = "Mode: MANUAL"; color = "bg-green-700"; }
+  else if (mode === "1" || mode === "autoset") { text = "Mode: AUTO (SETUP)"; color = "bg-yellow-700"; }
+  else if (mode === "2" || mode === "autorun") { text = "Mode: AUTO (RUN)"; color = "bg-blue-700"; }
+  el.className = `px-3 py-1 rounded-full text-sm ${color}`;
+  el.innerText = text;
+}
 
-    function setMode(mode) {
-      api("/setMode", "POST", "mode=" + mode).then(() => alert("Mode diubah ke " + mode));
-    }
-    function startAuto() {
-      api("/startAuto", "POST").then(() => alert("Mode otomatis dimulai"));
-    }
-    function stopAuto() {
-      api("/stopAuto", "POST").then(() => alert("Dihentikan"));
-    }
+/* ======= Clock ======= */
+setInterval(() => {
+  const d = new Date();
+  document.getElementById('localClock').innerText = d.toLocaleString();
+}, 1000);
 
-    // ==== Manual LED control ====
-    function initSliders() {
-      const container = document.getElementById("ledControls");
-      container.innerHTML = "";
-      for (let i = 1; i <= 8; i++) {
-        const div = document.createElement("div");
-        div.className = "bg-gray-700 p-3 rounded-xl";
-        div.innerHTML = `
-          <h3 class='font-semibold mb-2'>LED ${i}</h3>
-          <input type='range' min='0' max='255' value='0' id='led${i}' class='w-full accent-blue-500'
-            oninput='updateLED(${i}, this.value)'>
-          <p class='text-xs mt-1'>Brightness: <span id='val${i}'>0</span></p>`;
-        container.appendChild(div);
-      }
+/* ======= Build UI ======= */
+function initLedControls() {
+  const container = document.getElementById('ledControls');
+  container.innerHTML = "";
+  for (let i = 1; i <= 8; i++) {
+    const wrapper = document.createElement('div');
+    wrapper.className = "bg-slate-800 p-2 rounded";
+    wrapper.innerHTML = `
+      <div class="flex items-center justify-between"><div class="font-semibold">LED ${i}</div><div id="val${i}" class="text-xs">0</div></div>
+      <input id="led${i}" type="range" min="0" max="255" value="0" class="w-full mt-2" oninput="onSliderInput(${i}, this.value)" />
+      <div class="mt-2 flex gap-2">
+        <button onclick="sendManual(${i})" class="flex-1 px-2 py-1 rounded bg-indigo-600">Kirim</button>
+        <button onclick="setLedZero(${i})" class="px-2 py-1 rounded bg-rose-600">0</button>
+      </div>
+    `;
+    container.appendChild(wrapper);
+  }
+}
+initLedControls();
+
+function onSliderInput(index, val) {
+  document.getElementById('val' + index).innerText = val;
+}
+
+/* ======= Connect / Disconnect ======= */
+function connectESP() {
+  const ip = document.getElementById('espIp').value.trim();
+  if (!ip) return alert('Masukkan IP ESP32 dulu!');
+  espIP = ip;
+  connected = true;
+  setConnStatus('Terhubung ke http://' + espIP);
+  setLastAction('Connected to ' + espIP);
+  document.getElementById('detectedIp').innerText = espIP;
+  fetchStatus(); // initial fetch
+}
+
+function clearConnection() {
+  espIP = "";
+  connected = false;
+  setConnStatus('Belum terhubung');
+  setLastAction('Disconnected');
+  document.getElementById('detectedIp').innerText = '—';
+  document.getElementById('tempStatus').innerText = '—';
+  setModeBadge(null);
+}
+
+/* ======= API helpers ======= */
+async function apiGET(path) {
+  if (!espIP) throw new Error('No ESP IP');
+  const url = `http://${espIP}${path}`;
+  const resp = await fetch(url, { method: 'GET' });
+  if (!resp.ok) throw new Error('HTTP ' + resp.status);
+  return resp;
+}
+async function apiPOST(path, body, contentType='text/plain') {
+  if (!espIP) throw new Error('No ESP IP');
+  const url = `http://${espIP}${path}`;
+  const resp = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': contentType },
+    body: body
+  });
+  return resp;
+}
+
+/* ======= Manual LED actions ======= */
+function setLedZero(i) {
+  document.getElementById('led' + i).value = 0;
+  onSliderInput(i, 0);
+  sendManual(i);
+}
+async function sendManual(i) {
+  try {
+    const val = document.getElementById('led' + i).value;
+    await apiPOST(`/led/${i}`, String(val), 'text/plain');
+    setLastAction(`Manual: LED ${i} -> ${val}`);
+  } catch (e) {
+    alert('Gagal kirim ke ESP: ' + e.message);
+  }
+}
+
+/* ======= Schedule table generation ======= */
+function buildScheduleTable() {
+  const thead = document.getElementById('theadRow');
+  const tbody = document.getElementById('scheduleTable');
+  thead.innerHTML = '';
+  tbody.innerHTML = '';
+  const trh = document.createElement('tr');
+  trh.innerHTML = `<th class="p-2 text-left bg-slate-700">LED \\ Time</th>`;
+  for (let s=0; s<SLOT_COUNT; s++) {
+    const hour = START_HOUR + Math.floor(s/2);
+    const min = (s%2) ? '30' : '00';
+    const th = document.createElement('th');
+    th.className = 'p-2 bg-slate-700 text-xs';
+    th.innerText = `${hour}:${min}`;
+    trh.appendChild(th);
+  }
+  thead.appendChild(trh);
+
+  for (let ch=0; ch<8; ch++) {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td class="p-2 bg-slate-800 font-semibold">LED ${ch+1}</td>`;
+    for (let s=0; s<SLOT_COUNT; s++) {
+      const td = document.createElement('td');
+      td.className = 'p-1';
+      td.innerHTML = `<input name="s_${ch}_${s}" type="number" min="0" max="255" value="0" class="w-16 text-black text-center rounded" />`;
+      tr.appendChild(td);
     }
+    tbody.appendChild(tr);
+  }
+}
+buildScheduleTable();
 
-    function updateLED(index, val) {
-      document.getElementById("val"+index).innerText = val;
-      api(`/led/${index}`, "POST", val);
+/* ======= Save / Load schedule ======= */
+async function saveSchedule() {
+  try {
+    if (!espIP) return alert('Belum terhubung ke ESP!');
+    const form = document.getElementById('scheduleForm');
+    const formData = new FormData(form);
+    const params = new URLSearchParams();
+    for (const pair of formData.entries()) params.append(pair[0], pair[1]);
+    await apiPOST('/saveSchedule', params.toString(), 'application/x-www-form-urlencoded');
+    setLastAction('Jadwal disimpan ke ESP');
+  } catch (e) {
+    alert('Gagal simpan jadwal: ' + e.message);
+  }
+}
+
+async function loadScheduleFromESP() {
+  try {
+    if (!espIP) return alert('Belum terhubung ke ESP!');
+    // Attempt to GET / (root) and parse HTML inputs values
+    const resp = await apiGET('/');
+    const text = await resp.text();
+    // crude parse: find numbers in order (since root returns HTML table with values)
+    const matches = text.match(/value=['"]?(\d{1,3})['"]?/g);
+    if (!matches) return alert('Gagal parse jadwal dari ESP root.');
+    const inputs = document.querySelectorAll('#scheduleForm input[type=number]');
+    for (let i=0; i<inputs.length && i < matches.length; i++) {
+      const v = matches[i].match(/(\d{1,3})/)[1];
+      inputs[i].value = v;
     }
+    setLastAction('Jadwal dimuat dari ESP (root)');
+  } catch (e) {
+    alert('Gagal muat jadwal: ' + e.message);
+  }
+}
 
-    // ==== Schedule Table ====
-    function loadSchedule() {
-      const thead = document.getElementById("theadRow");
-      const tbody = document.getElementById("scheduleTable");
-      thead.innerHTML = "<tr><th class='p-2'>LED\\Jam</th></tr>";
-      let headerRow = thead.querySelector("tr");
-      for (let s = 0; s < slotCount; s++) {
-        const hour = startHour + Math.floor(s / 2);
-        const min = s % 2 ? "30" : "00";
-        const th = document.createElement("th");
-        th.className = "p-2";
-        th.innerText = `${hour}:${min}`;
-        headerRow.appendChild(th);
-      }
+/* ======= Mode and Auto control ======= */
+async function setMode(m) {
+  if (!espIP) return alert('Hubungkan ke ESP dulu.');
+  try {
+    const data = new URLSearchParams();
+    data.append('mode', m);
+    await apiPOST('/setMode', data.toString(), 'application/x-www-form-urlencoded');
+    setLastAction('Mode set => ' + m);
+    // small delay then refresh status
+    setTimeout(fetchStatus, 800);
+  } catch (e) {
+    alert('Gagal set mode: ' + e.message);
+  }
+}
+async function startAuto() {
+  if (!espIP) return alert('Hubungkan ke ESP dulu.');
+  try {
+    await apiPOST('/startAuto', '', 'application/x-www-form-urlencoded');
+    setLastAction('Start Auto');
+    setTimeout(fetchStatus, 800);
+  } catch (e) {
+    alert('Gagal start auto: ' + e.message);
+  }
+}
+async function stopAuto() {
+  if (!espIP) return alert('Hubungkan ke ESP dulu.');
+  try {
+    await apiPOST('/stopAuto', '', 'application/x-www-form-urlencoded');
+    setLastAction('Stop Auto');
+    setTimeout(fetchStatus, 800);
+  } catch (e) {
+    alert('Gagal stop auto: ' + e.message);
+  }
+}
 
-      tbody.innerHTML = "";
-      for (let ch = 0; ch < 8; ch++) {
-        const tr = document.createElement("tr");
-        tr.innerHTML = `<td class='p-2 font-semibold bg-gray-700'>LED ${ch + 1}</td>`;
-        for (let s = 0; s < slotCount; s++) {
-          const td = document.createElement("td");
-          td.className = "p-1";
-          td.innerHTML = `<input name='s_${ch}_${s}' type='number' min='0' max='255' value='0' class='w-16 text-center text-gray-900 rounded'>`;
-          tr.appendChild(td);
+/* ======= Status fetch ======= */
+async function fetchStatus() {
+  if (!espIP) return;
+  try {
+    const resp = await apiGET('/status');
+    const json = await resp.json();
+    document.getElementById('tempStatus').innerText = `NTC1: ${json.suhu1}°C | NTC2: ${json.suhu2}°C | batas: ${json.batasSuhu}°C`;
+    document.getElementById('detectedIp').innerText = json.ip || espIP;
+    setModeBadge(String(json.mode));
+    setESPStatus('OK');
+  } catch (e) {
+    setESPStatus('Error fetching /status: ' + e.message);
+  }
+}
+
+/* poll status periodically if connected */
+setInterval(() => {
+  if (espIP) fetchStatus();
+}, 5000);
+
+/* ======= IP discovery (mDNS / /ip endpoint tries) ======= */
+async function tryFetch(url, timeout = 2000) {
+  try {
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort(), timeout);
+    const res = await fetch(url, { method: 'GET', signal: controller.signal });
+    clearTimeout(id);
+    if (!res.ok) throw new Error('status ' + res.status);
+    const text = await res.text();
+    return text;
+  } catch (e) {
+    return null;
+  }
+}
+
+async function findESP() {
+  setLastAction('Mencari ESP (mDNS + /ip) ...');
+  const mdnsCandidates = [
+    'http://esp32.local/ip',
+    'http://esp8266.local/ip',
+    'http://esp32-1.local/ip',
+    'http://esp32-2.local/ip',
+    'http://esp32-3.local/ip'
+  ];
+
+  for (const url of mdnsCandidates) {
+    const res = await tryFetch(url, 1200);
+    if (res) {
+      // attempt to extract IP from returned HTML
+      const ipMatch = res.match(/(\d{1,3}\.){3}\d{1,3}/);
+      if (ipMatch) {
+        document.getElementById('espIp').value = ipMatch[0];
+        connectESP();
+        setLastAction('IP ditemukan via mDNS: ' + ipMatch[0]);
+        return;
+      } else {
+        // if no ip found, open link prompt
+        if (confirm('Ditemukan halaman di ' + url + ' — buka di tab baru?')) {
+          window.open(url, '_blank');
+          return;
         }
-        tbody.appendChild(tr);
       }
     }
+  }
 
-    function saveSchedule() {
-      const formData = new FormData(document.getElementById("scheduleForm"));
-      const params = new URLSearchParams(formData).toString();
-      api("/saveSchedule", "POST", params)
-        .then(() => alert("Jadwal disimpan ke ESP32"))
-        .catch(() => alert("Gagal simpan jadwal"));
+  // fallback: try to query common /ip on user-submitted hostname
+  const hostCandidate = document.getElementById('espIp').value.trim();
+  if (hostCandidate) {
+    const url = `http://${hostCandidate}/ip`;
+    const res = await tryFetch(url, 2000);
+    if (res) {
+      const ipMatch = res.match(/(\d{1,3}\.){3}\d{1,3}/);
+      if (ipMatch) {
+        document.getElementById('espIp').value = ipMatch[0];
+        connectESP();
+        setLastAction('IP ditemukan via /ip: ' + ipMatch[0]);
+        return;
+      }
     }
+  }
 
-    // ==== Clock ====
-    setInterval(() => {
-      const d = new Date();
-      document.getElementById("clock").innerText = d.toLocaleTimeString();
-    }, 1000);
-  </script>
+  alert('Gagal mendeteksi otomatis. Coba cek router/DHCP client list, atau gunakan MQTT retained ip (opsional).');
+  setLastAction('Find IP gagal');
+}
+
+/* ======= MQTT over WebSocket (optional) ======= */
+function mqttConnect() {
+  const wsUrl = document.getElementById('mqttWsUrl').value.trim();
+  const topic = document.getElementById('mqttTopic').value.trim() || 'esp32/ip';
+  if (!wsUrl) return alert('Masukkan MQTT WebSocket URL (contoh wss://broker.emqx.io:8084/mqtt)');
+  // create client with random clientId
+  const clientId = 'webdash_' + Math.floor(Math.random()*10000);
+  try {
+    mqttClient = new Paho.MQTT.Client(wsUrl.replace(/^wss?:\/\//, ''), Number((new URL(wsUrl)).port || 80), '/' + (new URL(wsUrl).pathname.replace(/^\//, '') || ''), clientId);
+    mqttClient.onConnectionLost = (e) => {
+      document.getElementById('mqttStatus').innerText = 'disconnected';
+      setLastAction('MQTT disconnected');
+    };
+    mqttClient.onMessageArrived = (msg) => {
+      document.getElementById('mqttStatus').innerText = 'message: ' + msg.payloadString;
+      // if topic matches ip topic, fill IP field and connect
+      if (msg.destinationName === topic) {
+        const ip = msg.payloadString.trim();
+        if (/^(\d{1,3}\.){3}\d{1,3}$/.test(ip)) {
+          document.getElementById('espIp').value = ip;
+          connectESP();
+          setLastAction('IP dari MQTT: ' + ip);
+        }
+      }
+    };
+    // connect options
+    const opt = {
+      onSuccess: () => {
+        document.getElementById('mqttStatus').innerText = 'connected';
+        setLastAction('MQTT connected');
+        mqttClient.subscribe(topic);
+      },
+      onFailure: (err) => {
+        document.getElementById('mqttStatus').innerText = 'connect failed';
+        alert('MQTT connect failed: ' + JSON.stringify(err));
+      },
+      useSSL: wsUrl.startsWith('wss://')
+    };
+    // Paho expects host/port/path split; we used a trick to supply via constructor, so call connect
+    mqttClient.connect(opt);
+  } catch (e) {
+    alert('MQTT init error: ' + e.message);
+  }
+}
+function mqttDisconnect() {
+  if (!mqttClient) return;
+  try {
+    mqttClient.disconnect();
+    document.getElementById('mqttStatus').innerText = 'disconnected';
+    setLastAction('MQTT disconnected');
+  } catch(e) {}
+}
+
+/* ======= On load: try to set mode badge blank ======= */
+setModeBadge(null);
+</script>
 </body>
 </html>
