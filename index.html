@@ -1,13 +1,14 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>LED Aquarium Controller</title>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>LED Aquarium Controller — Single Page</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
 <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <style>
+/* --- Style mengikuti versi lama --- */
 *{box-sizing:border-box}
 body{
   margin:0;
@@ -33,40 +34,79 @@ h1{
   margin-bottom:10px;
   text-shadow:1px 1px 3px rgba(0,0,0,0.5);
 }
+
+/* panel */
 .dashboard{
   background:rgba(255,255,255,0.1);
   backdrop-filter:blur(15px);
   border-radius:20px;
-  padding:25px;
+  padding:20px;
   width:100%;
-  max-width:460px;
+  max-width:980px; /* diperlebar supaya tabel muat di layar lebar */
   box-shadow:0 8px 24px rgba(0,0,0,0.4);
 }
+
+/* top controls */
+.top-row{
+  display:flex;
+  gap:12px;
+  align-items:center;
+  margin-bottom:12px;
+  flex-wrap:wrap;
+}
+select{
+  padding:8px 10px;
+  border-radius:10px;
+  border:none;
+  background:rgba(255,255,255,0.15);
+  color:#fff;
+  font-weight:600;
+}
+.mode-note{
+  font-size:13px;
+  color:#ddd;
+}
+
+/* suhu & chart */
 .temp-container{
   display:flex;
-  justify-content:space-around;
-  margin-bottom:20px;
+  justify-content:space-between;
+  gap:12px;
+  margin-bottom:16px;
+  flex-wrap:wrap;
 }
 .temp-card{
   background:rgba(255,255,255,0.15);
   border-radius:12px;
-  padding:15px 20px;
+  padding:12px 16px;
   text-align:center;
   min-width:120px;
   box-shadow:0 4px 10px rgba(0,0,0,0.3);
   transition:background 0.3s;
 }
-.temp-value{
-  font-size:24px;
-  font-weight:600;
-  margin-top:5px;
+.temp-value{font-size:22px;font-weight:600;margin-top:6px;}
+
+/* left column controls */
+.controls-row{
+  display:flex;
+  gap:16px;
+  align-items:flex-start;
+  flex-wrap:wrap;
 }
-.slider-container{margin:15px 0;text-align:left}
+
+/* manual column */
+.manual-col{
+  flex:1 1 320px;
+  max-width:460px;
+}
+
+/* slider */
+.slider-container{margin:12px 0;text-align:left}
 .slider-container label{
   display:block;
-  font-size:16px;
+  font-size:15px;
   font-weight:600;
-  margin-bottom:5px;
+  margin-bottom:6px;
   color:#fff;
   text-shadow:1px 1px 2px rgba(0,0,0,0.6);
 }
@@ -75,95 +115,92 @@ input[type=range]{
   width:100%;
   height:12px;
   border-radius:6px;
-  background:rgba(255,255,255,0.3);
+  background:rgba(255,255,255,0.25);
   outline:none;
-  transition:background 0.3s;
 }
 input[type=range]::-webkit-slider-thumb{
   -webkit-appearance:none;
-  width:24px;
-  height:24px;
-  border-radius:50%;
-  background:#fff;
-  border:2px solid #007bff;
-  cursor:pointer;
+  width:22px;height:22px;border-radius:50%;background:#fff;border:2px solid #007bff;cursor:pointer;
 }
-input[type=number]{
-  width:60px;
-  border:none;
-  border-radius:8px;
-  text-align:center;
-  padding:5px;
-  background:rgba(255,255,255,0.2);
-  color:#fff;
+input[type=number]{ width:60px;border:none;border-radius:8px;text-align:center;padding:6px;background:rgba(255,255,255,0.2);color:#fff; }
+
+/* disabled look for sliders when auto mode */
+.slider-disabled input[type=range]{
+  opacity:0.45;
 }
-#alert-box{
-  display:none;
-  background:rgba(255,0,0,0.4);
-  padding:10px;
-  margin:10px 0;
-  border-radius:10px;
-  text-align:center;
-  font-weight:600;
+.slider-disabled input[type=number]{
+  opacity:0.6;
 }
+
+/* batas suhu card */
 #batas-container{
-  background:rgba(255,255,255,0.15);
+  background:rgba(255,255,255,0.12);
   border-radius:12px;
-  padding:15px;
-  margin-top:15px;
-  box-shadow:0 4px 10px rgba(0,0,0,0.3);
+  padding:12px;
+  margin-top:10px;
+  box-shadow:0 4px 10px rgba(0,0,0,0.25);
 }
-button{
-  background:#007bff;
-  color:#fff;
-  border:none;
-  border-radius:8px;
-  padding:6px 14px;
-  cursor:pointer;
-  font-weight:600;
+
+/* auto table area */
+.auto-col{
+  flex:1 1 460px;
+  min-width:300px;
+  max-width:480px;
 }
-button:hover{background:#3399ff}
-#chart-container{
-  margin-top:25px;
-  background:rgba(255,255,255,0.1);
-  padding:15px;
-  border-radius:15px;
-  box-shadow:0 4px 10px rgba(0,0,0,0.3);
-}
-select{
-  width:100%;
+#auto-wrapper{
+  background:rgba(255,255,255,0.03);
   padding:8px;
-  border-radius:8px;
-  margin-bottom:15px;
-  border:none;
-  font-weight:600;
+  border-radius:10px;
 }
 #auto-container{
-  display:none;
-  margin-top:10px;
-  overflow-x:auto;
+  margin-top:8px;
+  overflow-x:auto; /* horizontal slider */
   white-space:nowrap;
+  padding-bottom:6px;
 }
-#auto-container::-webkit-scrollbar{
-  height:8px;
-}
-#auto-container::-webkit-scrollbar-thumb{
-  background:rgba(255,255,255,0.3);
-  border-radius:4px;
-}
-#auto-container::-webkit-scrollbar-track{
-  background:rgba(255,255,255,0.1);
-}
+#auto-container::-webkit-scrollbar{ height:8px; }
+#auto-container::-webkit-scrollbar-thumb{ background:rgba(255,255,255,0.25); border-radius:6px; }
 #auto-table{
   border-collapse:collapse;
   font-size:13px;
   color:#fff;
-  min-width:800px;
+  min-width:760px; /* cukup lebar sehingga scroll muncul di layar sempit */
 }
 #auto-table th,#auto-table td{
-  border:1px solid rgba(255,255,255,0.3);
-  padding:4px 6px;
+  border:1px solid rgba(255,255,255,0.12);
+  padding:6px 8px;
   text-align:center;
+  vertical-align:middle;
+  background:rgba(0,0,0,0.05);
+}
+#auto-table input{
+  width:56px;
+  text-align:center;
+  border:none;
+  border-radius:6px;
+  padding:4px;
+  background:rgba(255,255,255,0.12);
+  color:#fff;
+}
+
+/* chart container */
+#chart-container{
+  margin-top:14px;
+  background:rgba(255,255,255,0.06);
+  padding:10px;
+  border-radius:12px;
+}
+
+/* alert */
+#alert-box{
+  display:none;
+  background:rgba(255,0,0,0.28);
+  padding:8px;
+  margin:10px 0;
+  border-radius:10px;
+  text-align:center;
+  font-weight:600;
+  color:#fff;
 }
 </style>
 </head>
@@ -172,174 +209,281 @@ select{
 <div id="status">🔌 Menghubungkan ke MQTT...</div>
 
 <div class="dashboard">
-
-  <select id="modeSelect">
-    <option value="manual">Mode Manual</option>
-    <option value="auto">Mode Otomatis</option>
-  </select>
-
-  <div id="manual-container">
-    <div class="temp-container">
-      <div class="temp-card">Atas<br><span id="temp1" class="temp-value">-- °C</span></div>
-      <div class="temp-card">Bawah<br><span id="temp2" class="temp-value">-- °C</span></div>
-    </div>
-    <div id="alert-box"></div>
-    <div id="led-controls"></div>
-    <div id="batas-container">
-      <h3>Batas Suhu Maksimum</h3>
-      <input type="number" id="batasSuhu" min="30" max="90" value="50"> °C
-      <button id="setBatas">Simpan</button>
-      <div id="batas-info" style="margin-top:8px;color:#ddd;font-size:14px;"></div>
-    </div>
-    <div id="chart-container">
-      <h3 style="text-align:center;margin-bottom:10px;">Grafik Suhu Real-Time</h3>
-      <canvas id="tempChart" width="400" height="200"></canvas>
-    </div>
+  <!-- top: mode selector -->
+  <div class="top-row">
+    <select id="modeSelect" title="Pilih Mode">
+      <option value="manual">Mode Manual</option>
+      <option value="auto">Mode Otomatis</option>
+    </select>
+    <div class="mode-note">Mode Manual = slider aktif. Mode Otomatis = slider nonaktif, gunakan tabel jadwal.</div>
   </div>
 
-  <div id="auto-container">
-    <table id="auto-table">
-      <thead>
-        <tr>
-          <th>Waktu</th>
-          <th>Royal Blue</th>
-          <th>Blue</th>
-          <th>Violet</th>
-          <th>Red</th>
-          <th>Green</th>
-          <th>White</th>
-          <th>Sump</th>
-          <th>Fan</th>
-        </tr>
-      </thead>
-      <tbody id="auto-body"></tbody>
-    </table>
-    <button id="startAuto" style="margin-top:10px;">Start Otomatis</button>
-  </div>
+  <!-- main layout: left manual & right auto -->
+  <div class="controls-row">
+    <!-- MANUAL COLUMN -->
+    <div class="manual-col" id="manualColumn">
+      <div class="temp-container">
+        <div class="temp-card">Atas<br><span id="temp1" class="temp-value">-- °C</span></div>
+        <div class="temp-card">Bawah<br><span id="temp2" class="temp-value">-- °C</span></div>
+      </div>
 
+      <div id="alert-box"></div>
+
+      <div id="led-controls"></div>
+
+      <div id="batas-container">
+        <h3 style="margin:6px 0;">Batas Suhu Maksimum</h3>
+        <input type="number" id="batasSuhu" min="30" max="90" value="50"> °C
+        <button id="setBatas">Simpan</button>
+        <div id="batas-info" style="margin-top:8px;color:#ddd;font-size:13px;"></div>
+      </div>
+
+      <div id="chart-container">
+        <h3 style="text-align:center;margin:8px 0;">Grafik Suhu Real-Time</h3>
+        <canvas id="tempChart" width="400" height="180"></canvas>
+      </div>
+    </div>
+
+    <!-- AUTO COLUMN (tabel tetap terlihat) -->
+    <div class="auto-col">
+      <div id="auto-wrapper">
+        <h3 style="text-align:center;margin:6px 0;">Jadwal Intensitas Otomatis (07:00–16:00 tiap 30 menit)</h3>
+        <div id="auto-container">
+          <table id="auto-table" aria-label="Jadwal Otomatis">
+            <thead>
+              <tr>
+                <th>Waktu</th>
+                <th>Royal Blue</th>
+                <th>Blue</th>
+                <th>Violet</th>
+                <th>Red</th>
+                <th>Green</th>
+                <th>White</th>
+                <th>Sump</th>
+                <th>Fan</th>
+              </tr>
+            </thead>
+            <tbody id="auto-body"></tbody>
+          </table>
+        </div>
+
+        <div style="text-align:center;margin-top:8px;">
+          <button id="startAuto">Start Otomatis</button>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
 
 <script>
-const client=mqtt.connect('wss://broker.emqx.io:8084/mqtt');
-const ledNames=["Royal Blue","Blue","Violet","Red","Green","White","Sump","Fan"];
-const container=document.getElementById('led-controls');
-const statusText=document.getElementById('status');
+/* === MQTT setup (sama seperti dashboard lama) === */
+const client = mqtt.connect('wss://broker.emqx.io:8084/mqtt');
+const ledNames = ["Royal Blue","Blue","Violet","Red","Green","White","Sump","Fan"];
+const ledControls = document.getElementById('led-controls');
+const statusText = document.getElementById('status');
 
-// ====== SLIDER MANUAL ======
+/* --- Build manual sliders (identik tampilan lama) --- */
 ledNames.forEach((name,i)=>{
-  const idx=i+1;
-  container.innerHTML+=`
-    <div class="slider-container">
-      <label>${name} <input type="number" id="led${idx}-num" min="0" max="100" value="0">%</label>
-      <input type="range" id="led${idx}" min="0" max="100" value="0">
-    </div>`;
+  const idx = i+1;
+  const wrapper = document.createElement('div');
+  wrapper.className = 'slider-container';
+  wrapper.innerHTML = `
+    <label>${name} <input type="number" id="led${idx}-num" min="0" max="100" value="0">%</label>
+    <input type="range" id="led${idx}" min="0" max="100" value="0">
+  `;
+  ledControls.appendChild(wrapper);
 });
 
-// ====== GRAFIK SUHU ======
-const ctx=document.getElementById('tempChart').getContext('2d');
-const labels=[],data1=[],data2=[];
-const tempChart=new Chart(ctx,{
-  type:'line',
-  data:{labels:labels,datasets:[
-    {label:'Atas',data:data1,borderColor:'rgba(255,99,132,1)',tension:0.3,fill:false},
-    {label:'Bawah',data:data2,borderColor:'rgba(54,162,235,1)',tension:0.3,fill:false}
-  ]},
-  options:{scales:{y:{min:20,max:70}},plugins:{legend:{labels:{color:'#fff'}}}}
+/* --- Build auto table rows (07:00 - 16:00 tiap 30 menit) --- */
+const times = [];
+for (let h = 7; h <= 16; h++) {
+  times.push(`${String(h).padStart(2,'0')}:00`);
+  if (h < 16) times.push(`${String(h).padStart(2,'0')}:30`);
+}
+const autoBody = document.getElementById('auto-body');
+times.forEach(time=>{
+  const row = document.createElement('tr');
+  // use id-friendly time token (replace : with -)
+  const token = time.replace(':','-');
+  let cells = `<td>${time}</td>`;
+  for (let i=0;i<8;i++){
+    cells += `<td><input type="number" id="auto-${token}-${i+1}" min="0" max="100" value="0"></td>`;
+  }
+  row.innerHTML = cells;
+  autoBody.appendChild(row);
 });
-function updateChart(t1,t2){
-  const now=new Date().toLocaleTimeString();
-  labels.push(now);data1.push(t1);data2.push(t2);
-  if(labels.length>60){labels.shift();data1.shift();data2.shift();}
+
+/* --- MQTT event handlers --- */
+client.on('connect', ()=>{
+  statusText.innerHTML = "✅ Terhubung ke broker MQTT";
+  statusText.style.color = "#0f0";
+  for (let i=1;i<=8;i++) client.subscribe('led/'+i);
+  client.subscribe('suhu/ntc1');
+  client.subscribe('suhu/ntc2');
+  client.subscribe('status/suhu');
+  client.subscribe('status/batasSuhu');
+});
+client.on('reconnect', ()=>{ statusText.innerHTML="♻️ Menghubungkan ulang..."; statusText.style.color="#ff0"; });
+client.on('offline', ()=>{ statusText.innerHTML="❌ Terputus dari MQTT"; statusText.style.color="#f00"; });
+
+client.on('message', (topic, message) => {
+  const msg = message.toString();
+  if (topic.startsWith('led/')) {
+    const num = parseInt(topic.split('/')[1]);
+    const percent = Math.round(parseInt(msg)/255*100);
+    const s = document.getElementById('led'+num);
+    const n = document.getElementById('led'+num+'-num');
+    if (s) s.value = percent;
+    if (n) n.value = percent;
+  }
+  if (topic === 'suhu/ntc1') { updateTemp('temp1', msg); pushChart(parseFloat(msg), null); }
+  if (topic === 'suhu/ntc2') { updateTemp('temp2', msg); pushChart(null, parseFloat(msg)); }
+  if (topic === 'status/suhu') updateAlert(msg);
+  if (topic === 'status/batasSuhu') updateBatas(msg);
+});
+
+/* --- Temp & alert helpers --- */
+function updateTemp(id, val){
+  const t = parseFloat(val).toFixed(1);
+  const el = document.getElementById(id);
+  if (el) el.textContent = t + ' °C';
+  const card = el ? el.parentElement : null;
+  if (card) {
+    if (t >= 50) card.style.background = 'rgba(255,0,0,0.4)';
+    else if (t >= 40) card.style.background = 'rgba(255,215,0,0.3)';
+    else card.style.background = 'rgba(255,255,255,0.15)';
+  }
+}
+function updateAlert(msg){
+  const box = document.getElementById('alert-box');
+  if (msg.startsWith('TINGGI')) {
+    const suhu = msg.split(':')[1];
+    box.innerHTML = `⚠️ Suhu tinggi: ${suhu} °C<br>Semua LED dimatikan.`;
+    box.style.display = 'block';
+  } else {
+    box.style.display = 'none';
+  }
+}
+function updateBatas(val){
+  const el = document.getElementById('batasSuhu');
+  if (el) el.value = parseFloat(val).toFixed(1);
+  const info = document.getElementById('batas-info');
+  if (info) info.innerText = 'Batas suhu saat ini: ' + val + ' °C';
+}
+
+/* --- Slider manual behavior (publish led/x topics) --- */
+for (let i=1;i<=8;i++){
+  const s = document.getElementById('led'+i);
+  const n = document.getElementById('led'+i+'-num');
+  if (!s || !n) continue;
+  s.addEventListener('input', ()=>{
+    n.value = s.value;
+    // publish 0-255
+    client.publish('led/'+i, Math.round(s.value*2.55).toString());
+  });
+  n.addEventListener('change', ()=>{
+    let v = parseInt(n.value);
+    if (isNaN(v)) v = 0;
+    v = Math.min(100, Math.max(0, v));
+    n.value = v;
+    s.value = v;
+    client.publish('led/'+i, Math.round(v*2.55).toString());
+  });
+}
+
+/* --- Batas suhu save --- */
+document.getElementById('setBatas').addEventListener('click', ()=>{
+  const val = parseFloat(document.getElementById('batasSuhu').value);
+  if (val >= 30 && val <= 90) {
+    client.publish('set/batasSuhu', val.toString());
+    alert('Batas suhu dikirim ke ESP32: ' + val + ' °C');
+  } else alert('Masukkan nilai antara 30–90 °C');
+});
+
+/* --- Auto table input events (publish auto/set/<HH:MM>/<led>) --- */
+times.forEach(time=>{
+  const token = time.replace(':','-');
+  for (let i=1;i<=8;i++){
+    const id = `auto-${token}-${i}`;
+    const inp = document.getElementById(id);
+    if (!inp) continue;
+    inp.addEventListener('change', ()=>{
+      let v = parseInt(inp.value);
+      if (isNaN(v)) v = 0;
+      v = Math.min(100, Math.max(0, v));
+      inp.value = v;
+      const payload = Math.round(v * 2.55); // 0-255
+      const topic = `auto/set/${time}/${i}`;
+      client.publish(topic, String(payload));
+      // optional console
+      // console.log('PUB', topic, payload);
+    });
+  }
+});
+
+/* --- Start otomatis button --- */
+document.getElementById('startAuto').addEventListener('click', ()=>{
+  client.publish('auto/start', '1');
+  alert('Perintah start otomatis dikirim ke ESP32.');
+});
+
+/* --- Mode selector: toggles slider enabled/disabled and publish mode/set --- */
+const modeSelect = document.getElementById('modeSelect');
+function setMode(mode){
+  // publish mode
+  client.publish('mode/set', mode);
+  // toggle sliders
+  const disabled = (mode === 'auto');
+  for (let i=1;i<=8;i++){
+    const s = document.getElementById('led'+i);
+    const n = document.getElementById('led'+i+'-num');
+    if (s) s.disabled = disabled;
+    if (n) n.disabled = disabled;
+    // visual: add class to wrapper
+    const wrapper = s ? s.closest('.slider-container') : null;
+    if (wrapper) {
+      if (disabled) wrapper.classList.add('slider-disabled'); else wrapper.classList.remove('slider-disabled');
+    }
+  }
+}
+modeSelect.addEventListener('change', ()=> setMode(modeSelect.value));
+// initialize default
+setMode(modeSelect.value);
+
+/* --- Chart.js real-time push --- */
+const ctx = document.getElementById('tempChart').getContext('2d');
+const chartLabels = [];
+const chartData1 = [];
+const chartData2 = [];
+const tempChart = new Chart(ctx, {
+  type: 'line',
+  data: {
+    labels: chartLabels,
+    datasets: [
+      { label: 'Atas', data: chartData1, borderColor: 'rgba(255,99,132,1)', tension:0.3, fill:false },
+      { label: 'Bawah', data: chartData2, borderColor: 'rgba(54,162,235,1)', tension:0.3, fill:false }
+    ]
+  },
+  options: {
+    scales: { y: { min: 20, max: 70 } },
+    plugins: { legend: { labels: { color: '#fff' } } }
+  }
+});
+// push to chart (either top or bottom value)
+function pushChart(a, b){
+  const now = new Date().toLocaleTimeString();
+  // if value is null we reuse last known
+  if (a === null) a = chartData1.length ? chartData1[chartData1.length-1] : null;
+  if (b === null) b = chartData2.length ? chartData2[chartData2.length-1] : null;
+  chartLabels.push(now);
+  chartData1.push(a);
+  chartData2.push(b);
+  if (chartLabels.length > 60){ chartLabels.shift(); chartData1.shift(); chartData2.shift(); }
   tempChart.update();
 }
 
-// ====== MQTT EVENT ======
-client.on('connect',()=>{
-  statusText.innerHTML="✅ Terhubung ke broker MQTT";statusText.style.color="#0f0";
-  for(let i=1;i<=8;i++)client.subscribe('led/'+i);
-  client.subscribe('suhu/ntc1');client.subscribe('suhu/ntc2');
-  client.subscribe('status/suhu');client.subscribe('status/batasSuhu');
-});
-client.on('reconnect',()=>{statusText.innerHTML="♻️ Menghubungkan ulang...";statusText.style.color="#ff0";});
-client.on('offline',()=>{statusText.innerHTML="❌ Terputus dari MQTT";statusText.style.color="#f00";});
-let lastT1=0,lastT2=0;
-client.on('message',(topic,message)=>{
-  const msg=message.toString();
-  if(topic.startsWith('led/')){
-    const num=parseInt(topic.split('/')[1]);
-    const percent=Math.round(parseInt(msg)/255*100);
-    document.getElementById('led'+num).value=percent;
-    document.getElementById('led'+num+'-num').value=percent;
-  }
-  if(topic==='suhu/ntc1'){lastT1=parseFloat(msg);updateTemp('temp1',msg);updateChart(lastT1,lastT2);}
-  if(topic==='suhu/ntc2'){lastT2=parseFloat(msg);updateTemp('temp2',msg);updateChart(lastT1,lastT2);}
-  if(topic==='status/suhu')updateAlert(msg);
-  if(topic==='status/batasSuhu')updateBatas(msg);
-});
-function updateTemp(id,val){
-  const t=parseFloat(val).toFixed(1);
-  const el=document.getElementById(id);
-  el.textContent=t+' °C';
-  const card=el.parentElement;
-  if(t>=50)card.style.background='rgba(255,0,0,0.4)';
-  else if(t>=40)card.style.background='rgba(255,215,0,0.3)';
-  else card.style.background='rgba(255,255,255,0.15)';
-}
-function updateAlert(msg){
-  const box=document.getElementById('alert-box');
-  if(msg.startsWith('TINGGI')){
-    const suhu=msg.split(':')[1];
-    box.innerHTML=`⚠️ Suhu tinggi: ${suhu} °C<br>Semua LED dimatikan.`;box.style.display='block';
-  }else box.style.display='none';
-}
-function updateBatas(val){
-  document.getElementById('batasSuhu').value=parseFloat(val).toFixed(1);
-  document.getElementById('batas-info').innerText='Batas suhu saat ini: '+val+' °C';
-}
-for(let i=1;i<=8;i++){
-  const s=document.getElementById('led'+i);
-  const n=document.getElementById('led'+i+'-num');
-  s.addEventListener('input',()=>{n.value=s.value;client.publish('led/'+i,Math.round(s.value*2.55).toString());});
-  n.addEventListener('change',()=>{let v=parseInt(n.value);if(isNaN(v))v=0;v=Math.min(100,Math.max(0,v));n.value=v;s.value=v;client.publish('led/'+i,Math.round(v*2.55).toString());});
-}
-document.getElementById('setBatas').addEventListener('click',()=>{
-  const val=parseFloat(document.getElementById('batasSuhu').value);
-  if(val>=30&&val<=90){client.publish('set/batasSuhu',val.toString());alert('Batas suhu dikirim ke ESP32: '+val+' °C');}
-  else alert('Masukkan nilai antara 30–90 °C');
-});
-
-// ====== MODE MANUAL / OTOMATIS ======
-const modeSelect=document.getElementById('modeSelect');
-const manualContainer=document.getElementById('manual-container');
-const autoContainer=document.getElementById('auto-container');
-modeSelect.addEventListener('change',()=>{
-  if(modeSelect.value==='manual'){
-    manualContainer.style.display='block';
-    autoContainer.style.display='none';
-    client.publish('mode/set','manual');
-  }else{
-    manualContainer.style.display='none';
-    autoContainer.style.display='block';
-    client.publish('mode/set','auto');
-  }
-});
-
-// ====== TABEL OTOMATIS ======
-const times=[];
-for(let h=7;h<=16;h++){
-  times.push(`${h.toString().padStart(2,'0')}:00`);
-  if(h<16)times.push(`${h.toString().padStart(2,'0')}:30`);
-}
-const tbody=document.getElementById('auto-body');
-times.forEach(time=>{
-  const row=document.createElement('tr');
-  row.innerHTML=`<td>${time}</td>`+ledNames.map((_,i)=>`<td><input type='number' id='auto-${time}-${i+1}' min='0' max='100' value='0' style='width:60px;border:none;border-radius:6px;text-align:center;padding:3px;background:rgba(255,255,255,0.2);color:#fff;'></td>`).join('');
-  tbody.appendChild(row);
-});
-document.getElementById('startAuto').addEventListener('click',()=>{
-  client.publish('auto/start','1');
-  alert('Mode otomatis dimulai!');
-});
+/* --- small: preserve initial empty point to keep chart stable --- */
+pushChart(null, null);
 </script>
 </body>
 </html>
