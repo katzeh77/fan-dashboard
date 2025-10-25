@@ -1,489 +1,278 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>LED Aquarium Controller — Single Page</title>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
-<script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aquarium LED Dashboard</title>
 <style>
-/* --- Style mengikuti versi lama --- */
-*{box-sizing:border-box}
-body{
+body {
+  background:#121212;
+  color:white;
+  font-family:Arial, sans-serif;
   margin:0;
-  font-family:'Inter',sans-serif;
-  background:url('https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1350&q=80') no-repeat center center fixed;
-  background-size:cover;
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  min-height:100vh;
-  padding:20px;
-  color:#fff;
+  padding:0;
 }
-h1{
-  margin:20px 0 10px;
-  font-size:28px;
-  text-align:center;
-  text-shadow:2px 2px 6px rgba(0,0,0,0.7);
+.container {
+  width:90%;
+  max-width:1000px;
+  margin:20px auto;
 }
-#status{
-  font-size:14px;
-  color:#0f0;
-  margin-bottom:10px;
-  text-shadow:1px 1px 3px rgba(0,0,0,0.5);
-}
-
-/* panel */
-.dashboard{
-  background:rgba(255,255,255,0.1);
-  backdrop-filter:blur(15px);
-  border-radius:20px;
-  padding:20px;
-  width:100%;
-  max-width:980px; /* diperlebar supaya tabel muat di layar lebar */
-  box-shadow:0 8px 24px rgba(0,0,0,0.4);
-}
-
-/* top controls */
-.top-row{
-  display:flex;
-  gap:12px;
-  align-items:center;
-  margin-bottom:12px;
-  flex-wrap:wrap;
-}
-select{
-  padding:8px 10px;
-  border-radius:10px;
-  border:none;
-  background:rgba(255,255,255,0.15);
-  color:#fff;
-  font-weight:600;
-}
-.mode-note{
-  font-size:13px;
-  color:#ddd;
-}
-
-/* suhu & chart */
-.temp-container{
+.header {
   display:flex;
   justify-content:space-between;
-  gap:12px;
-  margin-bottom:16px;
-  flex-wrap:wrap;
+  align-items:center;
+  margin-bottom:10px;
 }
-.temp-card{
-  background:rgba(255,255,255,0.15);
-  border-radius:12px;
-  padding:12px 16px;
-  text-align:center;
-  min-width:120px;
-  box-shadow:0 4px 10px rgba(0,0,0,0.3);
-  transition:background 0.3s;
+.header select {
+  background:#222;
+  color:white;
+  border:1px solid #444;
+  padding:5px;
+  border-radius:5px;
 }
-.temp-value{font-size:22px;font-weight:600;margin-top:6px;}
-
-/* left column controls */
-.controls-row{
-  display:flex;
-  gap:16px;
-  align-items:flex-start;
-  flex-wrap:wrap;
-}
-
-/* manual column */
-.manual-col{
-  flex:1 1 320px;
-  max-width:460px;
-}
-
-/* slider */
-.slider-container{margin:12px 0;text-align:left}
-.slider-container label{
-  display:block;
-  font-size:15px;
-  font-weight:600;
-  margin-bottom:6px;
-  color:#fff;
-  text-shadow:1px 1px 2px rgba(0,0,0,0.6);
-}
-input[type=range]{
-  -webkit-appearance:none;
-  width:100%;
-  height:12px;
-  border-radius:6px;
-  background:rgba(255,255,255,0.25);
-  outline:none;
-}
-input[type=range]::-webkit-slider-thumb{
-  -webkit-appearance:none;
-  width:22px;height:22px;border-radius:50%;background:#fff;border:2px solid #007bff;cursor:pointer;
-}
-input[type=number]{ width:60px;border:none;border-radius:8px;text-align:center;padding:6px;background:rgba(255,255,255,0.2);color:#fff; }
-
-/* disabled look for sliders when auto mode */
-.slider-disabled input[type=range]{
-  opacity:0.45;
-}
-.slider-disabled input[type=number]{
-  opacity:0.6;
-}
-
-/* batas suhu card */
-#batas-container{
-  background:rgba(255,255,255,0.12);
-  border-radius:12px;
-  padding:12px;
-  margin-top:10px;
-  box-shadow:0 4px 10px rgba(0,0,0,0.25);
-}
-
-/* auto table area */
-.auto-col{
-  flex:1 1 460px;
-  min-width:300px;
-  max-width:480px;
-}
-#auto-wrapper{
-  background:rgba(255,255,255,0.03);
-  padding:8px;
+.section {
+  background:#1e1e1e;
+  padding:15px;
   border-radius:10px;
+  box-shadow:0 0 8px rgba(255,255,255,0.1);
+  margin-bottom:15px;
 }
-#auto-container{
-  margin-top:8px;
-  overflow-x:auto; /* horizontal slider */
-  white-space:nowrap;
-  padding-bottom:6px;
+.section h2 {
+  font-size:18px;
+  margin-top:0;
+  border-bottom:1px solid #333;
+  padding-bottom:5px;
 }
-#auto-container::-webkit-scrollbar{ height:8px; }
-#auto-container::-webkit-scrollbar-thumb{ background:rgba(255,255,255,0.25); border-radius:6px; }
-#auto-table{
-  border-collapse:collapse;
-  font-size:13px;
-  color:#fff;
-  min-width:760px; /* cukup lebar sehingga scroll muncul di layar sempit */
+.status-grid {
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+  gap:10px;
 }
-#auto-table th,#auto-table td{
-  border:1px solid rgba(255,255,255,0.12);
-  padding:6px 8px;
+.status-item {
+  background:#222;
+  padding:8px;
+  border-radius:8px;
   text-align:center;
-  vertical-align:middle;
-  background:rgba(0,0,0,0.05);
 }
-#auto-table input{
-  width:56px;
-  text-align:center;
-  border:none;
-  border-radius:6px;
-  padding:4px;
-  background:rgba(255,255,255,0.12);
-  color:#fff;
+.slider-container {
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+  gap:10px;
 }
-
-/* chart container */
-#chart-container{
-  margin-top:14px;
-  background:rgba(255,255,255,0.06);
+.slider {
+  background:#222;
   padding:10px;
-  border-radius:12px;
+  border-radius:8px;
+  text-align:center;
+}
+.slider input[type=range] {
+  width:90%;
+}
+#auto-container {
+  overflow-x:auto;
+  white-space:nowrap;
+}
+#auto-table {
+  border-collapse:collapse;
+  width:100%;
+  min-width:800px;
+  font-size:14px;
+}
+#auto-table th,#auto-table td {
+  border:1px solid #444;
+  padding:4px 8px;
+  text-align:center;
+}
+button {
+  background:#333;
+  color:white;
+  border:none;
+  padding:8px 15px;
+  border-radius:6px;
+  cursor:pointer;
+  margin-top:8px;
+}
+button:hover {
+  background:#555;
+}
+canvas {
+  width:100%;
+  max-height:250px;
 }
 
-/* alert */
-#alert-box{
-  display:none;
-  background:rgba(255,0,0,0.28);
-  padding:8px;
-  margin:10px 0;
-  border-radius:10px;
-  text-align:center;
-  font-weight:600;
-  color:#fff;
+/* ====== RESPONSIVE FIX UNTUK HP ====== */
+@media (max-width: 768px) {
+  body {
+    font-size: 14px;
+    padding: 5px;
+  }
+
+  .container {
+    width: 100% !important;
+    margin: 0;
+    padding: 8px;
+    box-sizing: border-box;
+  }
+
+  .section {
+    width: 100% !important;
+    margin-bottom: 15px;
+    overflow-x: auto;
+  }
+
+  table, th, td {
+    font-size: 12px;
+  }
+
+  #auto-container {
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+
+  canvas {
+    width: 100% !important;
+    height: auto !important;
+  }
+
+  input[type=range] {
+    width: 90% !important;
+  }
+
+  select, button {
+    width: 100%;
+    margin-top: 6px;
+  }
 }
 </style>
 </head>
 <body>
-<h1>LED Aquarium Controller</h1>
-<div id="status">🔌 Menghubungkan ke MQTT...</div>
-
-<div class="dashboard">
-  <!-- top: mode selector -->
-  <div class="top-row">
-    <select id="modeSelect" title="Pilih Mode">
-      <option value="manual">Mode Manual</option>
-      <option value="auto">Mode Otomatis</option>
-    </select>
-    <div class="mode-note">Mode Manual = slider aktif. Mode Otomatis = slider nonaktif, gunakan tabel jadwal.</div>
+<div class="container">
+  <div class="header">
+    <h1>LED Dashboard</h1>
+    <div>
+      Mode: 
+      <select id="mode">
+        <option value="manual">Manual</option>
+        <option value="auto">Otomatis</option>
+      </select>
+    </div>
   </div>
 
-  <!-- main layout: left manual & right auto -->
-  <div class="controls-row">
-    <!-- MANUAL COLUMN -->
-    <div class="manual-col" id="manualColumn">
-      <div class="temp-container">
-        <div class="temp-card">Atas<br><span id="temp1" class="temp-value">-- °C</span></div>
-        <div class="temp-card">Bawah<br><span id="temp2" class="temp-value">-- °C</span></div>
-      </div>
-
-      <div id="alert-box"></div>
-
-      <div id="led-controls"></div>
-
-      <div id="batas-container">
-        <h3 style="margin:6px 0;">Batas Suhu Maksimum</h3>
-        <input type="number" id="batasSuhu" min="30" max="90" value="50"> °C
-        <button id="setBatas">Simpan</button>
-        <div id="batas-info" style="margin-top:8px;color:#ddd;font-size:13px;"></div>
-      </div>
-
-      <div id="chart-container">
-        <h3 style="text-align:center;margin:8px 0;">Grafik Suhu Real-Time</h3>
-        <canvas id="tempChart" width="400" height="180"></canvas>
-      </div>
+  <div class="section">
+    <h2>Status Suhu & Sistem</h2>
+    <div class="status-grid">
+      <div class="status-item">NTC1: <span id="ntc1">--</span> °C</div>
+      <div class="status-item">NTC2: <span id="ntc2">--</span> °C</div>
+      <div class="status-item">Suhu Maks: <span id="maxTemp">49</span> °C</div>
+      <div class="status-item">Koneksi: <span id="status">Menunggu...</span></div>
     </div>
+  </div>
 
-    <!-- AUTO COLUMN (tabel tetap terlihat) -->
-    <div class="auto-col">
-      <div id="auto-wrapper">
-        <h3 style="text-align:center;margin:6px 0;">Jadwal Intensitas Otomatis (07:00–16:00 tiap 30 menit)</h3>
-        <div id="auto-container">
-          <table id="auto-table" aria-label="Jadwal Otomatis">
-            <thead>
-              <tr>
-                <th>Waktu</th>
-                <th>Royal Blue</th>
-                <th>Blue</th>
-                <th>Violet</th>
-                <th>Red</th>
-                <th>Green</th>
-                <th>White</th>
-                <th>Sump</th>
-                <th>Fan</th>
-              </tr>
-            </thead>
-            <tbody id="auto-body"></tbody>
-          </table>
-        </div>
-
-        <div style="text-align:center;margin-top:8px;">
-          <button id="startAuto">Start Otomatis</button>
-        </div>
-      </div>
+  <div class="section">
+    <h2>Manual Control</h2>
+    <div class="slider-container">
+      <div class="slider">Royal Blue<br><input type="range" id="ch1" min="0" max="100" value="0"></div>
+      <div class="slider">Blue<br><input type="range" id="ch2" min="0" max="100" value="0"></div>
+      <div class="slider">Violet<br><input type="range" id="ch3" min="0" max="100" value="0"></div>
+      <div class="slider">Red<br><input type="range" id="ch4" min="0" max="100" value="0"></div>
+      <div class="slider">Green<br><input type="range" id="ch5" min="0" max="100" value="0"></div>
+      <div class="slider">White<br><input type="range" id="ch6" min="0" max="100" value="0"></div>
+      <div class="slider">Sump<br><input type="range" id="ch7" min="0" max="100" value="0"></div>
+      <div class="slider">Fan<br><input type="range" id="ch8" min="0" max="100" value="0"></div>
     </div>
+  </div>
+
+  <div class="section">
+    <h2>Grafik Suhu</h2>
+    <canvas id="tempChart"></canvas>
+  </div>
+
+  <div class="section">
+    <h2>Jadwal Otomatis</h2>
+    <div id="auto-container">
+      <table id="auto-table">
+        <thead>
+          <tr>
+            <th>Jam</th>
+            <th>Royal Blue</th>
+            <th>Blue</th>
+            <th>Violet</th>
+            <th>Red</th>
+            <th>Green</th>
+            <th>White</th>
+            <th>Sump</th>
+            <th>Fan</th>
+          </tr>
+        </thead>
+        <tbody id="scheduleBody"></tbody>
+      </table>
+    </div>
+    <button id="startAuto">Start Otomatis</button>
   </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-/* === MQTT setup (sama seperti dashboard lama) === */
-const client = mqtt.connect('wss://broker.emqx.io:8084/mqtt');
-const ledNames = ["Royal Blue","Blue","Violet","Red","Green","White","Sump","Fan"];
-const ledControls = document.getElementById('led-controls');
-const statusText = document.getElementById('status');
-
-/* --- Build manual sliders (identik tampilan lama) --- */
-ledNames.forEach((name,i)=>{
-  const idx = i+1;
-  const wrapper = document.createElement('div');
-  wrapper.className = 'slider-container';
-  wrapper.innerHTML = `
-    <label>${name} <input type="number" id="led${idx}-num" min="0" max="100" value="0">%</label>
-    <input type="range" id="led${idx}" min="0" max="100" value="0">
-  `;
-  ledControls.appendChild(wrapper);
+const modeSelect=document.getElementById('mode');
+const sliders=document.querySelectorAll('input[type=range]');
+modeSelect.addEventListener('change',()=>{
+  const auto=modeSelect.value==='auto';
+  sliders.forEach(s=>s.disabled=auto);
 });
 
-/* --- Build auto table rows (07:00 - 16:00 tiap 30 menit) --- */
-const times = [];
-for (let h = 7; h <= 16; h++) {
-  times.push(`${String(h).padStart(2,'0')}:00`);
-  if (h < 16) times.push(`${String(h).padStart(2,'0')}:30`);
+// Dummy suhu (simulasi)
+let temp1=28, temp2=27;
+function updateTemp(){
+  temp1+=(Math.random()-0.5)*0.2;
+  temp2+=(Math.random()-0.5)*0.2;
+  document.getElementById('ntc1').textContent=temp1.toFixed(1);
+  document.getElementById('ntc2').textContent=temp2.toFixed(1);
 }
-const autoBody = document.getElementById('auto-body');
-times.forEach(time=>{
-  const row = document.createElement('tr');
-  // use id-friendly time token (replace : with -)
-  const token = time.replace(':','-');
-  let cells = `<td>${time}</td>`;
-  for (let i=0;i<8;i++){
-    cells += `<td><input type="number" id="auto-${token}-${i+1}" min="0" max="100" value="0"></td>`;
-  }
-  row.innerHTML = cells;
-  autoBody.appendChild(row);
-});
+setInterval(updateTemp,1000);
 
-/* --- MQTT event handlers --- */
-client.on('connect', ()=>{
-  statusText.innerHTML = "✅ Terhubung ke broker MQTT";
-  statusText.style.color = "#0f0";
-  for (let i=1;i<=8;i++) client.subscribe('led/'+i);
-  client.subscribe('suhu/ntc1');
-  client.subscribe('suhu/ntc2');
-  client.subscribe('status/suhu');
-  client.subscribe('status/batasSuhu');
-});
-client.on('reconnect', ()=>{ statusText.innerHTML="♻️ Menghubungkan ulang..."; statusText.style.color="#ff0"; });
-client.on('offline', ()=>{ statusText.innerHTML="❌ Terputus dari MQTT"; statusText.style.color="#f00"; });
-
-client.on('message', (topic, message) => {
-  const msg = message.toString();
-  if (topic.startsWith('led/')) {
-    const num = parseInt(topic.split('/')[1]);
-    const percent = Math.round(parseInt(msg)/255*100);
-    const s = document.getElementById('led'+num);
-    const n = document.getElementById('led'+num+'-num');
-    if (s) s.value = percent;
-    if (n) n.value = percent;
-  }
-  if (topic === 'suhu/ntc1') { updateTemp('temp1', msg); pushChart(parseFloat(msg), null); }
-  if (topic === 'suhu/ntc2') { updateTemp('temp2', msg); pushChart(null, parseFloat(msg)); }
-  if (topic === 'status/suhu') updateAlert(msg);
-  if (topic === 'status/batasSuhu') updateBatas(msg);
-});
-
-/* --- Temp & alert helpers --- */
-function updateTemp(id, val){
-  const t = parseFloat(val).toFixed(1);
-  const el = document.getElementById(id);
-  if (el) el.textContent = t + ' °C';
-  const card = el ? el.parentElement : null;
-  if (card) {
-    if (t >= 50) card.style.background = 'rgba(255,0,0,0.4)';
-    else if (t >= 40) card.style.background = 'rgba(255,215,0,0.3)';
-    else card.style.background = 'rgba(255,255,255,0.15)';
-  }
-}
-function updateAlert(msg){
-  const box = document.getElementById('alert-box');
-  if (msg.startsWith('TINGGI')) {
-    const suhu = msg.split(':')[1];
-    box.innerHTML = `⚠️ Suhu tinggi: ${suhu} °C<br>Semua LED dimatikan.`;
-    box.style.display = 'block';
-  } else {
-    box.style.display = 'none';
-  }
-}
-function updateBatas(val){
-  const el = document.getElementById('batasSuhu');
-  if (el) el.value = parseFloat(val).toFixed(1);
-  const info = document.getElementById('batas-info');
-  if (info) info.innerText = 'Batas suhu saat ini: ' + val + ' °C';
-}
-
-/* --- Slider manual behavior (publish led/x topics) --- */
-for (let i=1;i<=8;i++){
-  const s = document.getElementById('led'+i);
-  const n = document.getElementById('led'+i+'-num');
-  if (!s || !n) continue;
-  s.addEventListener('input', ()=>{
-    n.value = s.value;
-    // publish 0-255
-    client.publish('led/'+i, Math.round(s.value*2.55).toString());
-  });
-  n.addEventListener('change', ()=>{
-    let v = parseInt(n.value);
-    if (isNaN(v)) v = 0;
-    v = Math.min(100, Math.max(0, v));
-    n.value = v;
-    s.value = v;
-    client.publish('led/'+i, Math.round(v*2.55).toString());
-  });
-}
-
-/* --- Batas suhu save --- */
-document.getElementById('setBatas').addEventListener('click', ()=>{
-  const val = parseFloat(document.getElementById('batasSuhu').value);
-  if (val >= 30 && val <= 90) {
-    client.publish('set/batasSuhu', val.toString());
-    alert('Batas suhu dikirim ke ESP32: ' + val + ' °C');
-  } else alert('Masukkan nilai antara 30–90 °C');
-});
-
-/* --- Auto table input events (publish auto/set/<HH:MM>/<led>) --- */
-times.forEach(time=>{
-  const token = time.replace(':','-');
-  for (let i=1;i<=8;i++){
-    const id = `auto-${token}-${i}`;
-    const inp = document.getElementById(id);
-    if (!inp) continue;
-    inp.addEventListener('change', ()=>{
-      let v = parseInt(inp.value);
-      if (isNaN(v)) v = 0;
-      v = Math.min(100, Math.max(0, v));
-      inp.value = v;
-      const payload = Math.round(v * 2.55); // 0-255
-      const topic = `auto/set/${time}/${i}`;
-      client.publish(topic, String(payload));
-      // optional console
-      // console.log('PUB', topic, payload);
-    });
-  }
-});
-
-/* --- Start otomatis button --- */
-document.getElementById('startAuto').addEventListener('click', ()=>{
-  client.publish('auto/start', '1');
-  alert('Perintah start otomatis dikirim ke ESP32.');
-});
-
-/* --- Mode selector: toggles slider enabled/disabled and publish mode/set --- */
-const modeSelect = document.getElementById('modeSelect');
-function setMode(mode){
-  // publish mode
-  client.publish('mode/set', mode);
-  // toggle sliders
-  const disabled = (mode === 'auto');
-  for (let i=1;i<=8;i++){
-    const s = document.getElementById('led'+i);
-    const n = document.getElementById('led'+i+'-num');
-    if (s) s.disabled = disabled;
-    if (n) n.disabled = disabled;
-    // visual: add class to wrapper
-    const wrapper = s ? s.closest('.slider-container') : null;
-    if (wrapper) {
-      if (disabled) wrapper.classList.add('slider-disabled'); else wrapper.classList.remove('slider-disabled');
-    }
-  }
-}
-modeSelect.addEventListener('change', ()=> setMode(modeSelect.value));
-// initialize default
-setMode(modeSelect.value);
-
-/* --- Chart.js real-time push --- */
-const ctx = document.getElementById('tempChart').getContext('2d');
-const chartLabels = [];
-const chartData1 = [];
-const chartData2 = [];
-const tempChart = new Chart(ctx, {
-  type: 'line',
-  data: {
-    labels: chartLabels,
-    datasets: [
-      { label: 'Atas', data: chartData1, borderColor: 'rgba(255,99,132,1)', tension:0.3, fill:false },
-      { label: 'Bawah', data: chartData2, borderColor: 'rgba(54,162,235,1)', tension:0.3, fill:false }
+// Grafik suhu
+const ctx=document.getElementById('tempChart');
+const chart=new Chart(ctx,{
+  type:'line',
+  data:{
+    labels:[],
+    datasets:[
+      {label:'NTC1',data:[],borderColor:'aqua',fill:false},
+      {label:'NTC2',data:[],borderColor:'lime',fill:false}
     ]
   },
-  options: {
-    scales: { y: { min: 20, max: 70 } },
-    plugins: { legend: { labels: { color: '#fff' } } }
+  options:{
+    scales:{y:{beginAtZero:false}},
+    animation:false
   }
 });
-// push to chart (either top or bottom value)
-function pushChart(a, b){
-  const now = new Date().toLocaleTimeString();
-  // if value is null we reuse last known
-  if (a === null) a = chartData1.length ? chartData1[chartData1.length-1] : null;
-  if (b === null) b = chartData2.length ? chartData2[chartData2.length-1] : null;
-  chartLabels.push(now);
-  chartData1.push(a);
-  chartData2.push(b);
-  if (chartLabels.length > 60){ chartLabels.shift(); chartData1.shift(); chartData2.shift(); }
-  tempChart.update();
-}
+let time=0;
+setInterval(()=>{
+  time++;
+  if(chart.data.labels.length>30){
+    chart.data.labels.shift();
+    chart.data.datasets[0].data.shift();
+    chart.data.datasets[1].data.shift();
+  }
+  chart.data.labels.push(time);
+  chart.data.datasets[0].data.push(temp1.toFixed(1));
+  chart.data.datasets[1].data.push(temp2.toFixed(1));
+  chart.update();
+},2000);
 
-/* --- small: preserve initial empty point to keep chart stable --- */
-pushChart(null, null);
+// Jadwal otomatis (07:00–16:00 setiap 30 menit)
+const scheduleBody=document.getElementById('scheduleBody');
+for(let h=7;h<=16;h++){
+  for(let m=0;m<60;m+=30){
+    const tr=document.createElement('tr');
+    const jam=`${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+    tr.innerHTML=`<td>${jam}</td>`+Array(8).fill('<td><input type="number" min="0" max="100" value="0" style="width:50px;background:#222;color:white;border:1px solid #444;border-radius:4px;text-align:center;"></td>').join('');
+    scheduleBody.appendChild(tr);
+  }
+}
+document.getElementById('startAuto').addEventListener('click',()=>{
+  alert('Mode otomatis dimulai!');
+});
 </script>
 </body>
 </html>
