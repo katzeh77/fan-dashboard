@@ -1,236 +1,194 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>LED Dashboard - Manual & Otomatis</title>
-  <style>
-    body {
-      font-family: "Segoe UI", sans-serif;
-      background: #0d1117;
-      color: #e6edf3;
-      margin: 0;
-      padding: 10px;
-      text-align: center;
-    }
-    h1 {
-      font-size: 22px;
-      margin-bottom: 10px;
-      color: #58a6ff;
-    }
-    .card {
-      background: #161b22;
-      border: 1px solid #30363d;
-      border-radius: 12px;
-      padding: 15px;
-      margin: 10px auto;
-      max-width: 420px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.4);
-    }
-    select, input[type="number"], button {
-      padding: 6px 10px;
-      border-radius: 6px;
-      border: none;
-      margin: 5px;
-      background: #21262d;
-      color: #e6edf3;
-      font-size: 14px;
-    }
-    button {
-      background: #238636;
-      cursor: pointer;
-      transition: 0.2s;
-    }
-    button:hover { background: #2ea043; }
-    .slider-container {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin: 8px 0;
-    }
-    input[type="range"] {
-      width: 200px;
-    }
-    .tabel-container {
-      max-height: 300px;
-      overflow-y: auto;
-      border: 1px solid #30363d;
-      border-radius: 8px;
-      margin-top: 8px;
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-    }
-    th, td {
-      padding: 5px;
-      border-bottom: 1px solid #30363d;
-      text-align: center;
-      font-size: 13px;
-    }
-    th {
-      position: sticky;
-      top: 0;
-      background: #21262d;
-    }
-    canvas {
-      width: 100%;
-      max-width: 400px;
-      height: 200px;
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>LED Aquarium Controller</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+*{box-sizing:border-box}
+body{
+  margin:0;
+  font-family:'Inter',sans-serif;
+  background:url('https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1350&q=80') no-repeat center center fixed;
+  background-size:cover;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  min-height:100vh;
+  padding:20px;
+  color:#fff;
+}
+h1{
+  margin:20px 0 10px;
+  font-size:26px;
+  text-align:center;
+  text-shadow:2px 2px 6px rgba(0,0,0,0.7);
+}
+#status{
+  font-size:14px;
+  color:#0f0;
+  margin-bottom:10px;
+  text-shadow:1px 1px 3px rgba(0,0,0,0.5);
+}
+#clock{
+  font-size:18px;
+  font-weight:600;
+  margin-bottom:15px;
+  text-shadow:1px 1px 4px rgba(0,0,0,0.7);
+}
+.dashboard{
+  background:rgba(255,255,255,0.1);
+  backdrop-filter:blur(15px);
+  border-radius:20px;
+  padding:25px;
+  width:100%;
+  max-width:460px;
+  box-shadow:0 8px 24px rgba(0,0,0,0.4);
+}
+.temp-container{
+  display:flex;
+  justify-content:space-around;
+  margin-bottom:20px;
+}
+.temp-card{
+  background:rgba(255,255,255,0.15);
+  border-radius:12px;
+  padding:15px 20px;
+  text-align:center;
+  min-width:120px;
+  box-shadow:0 4px 10px rgba(0,0,0,0.3);
+  transition:background 0.3s;
+}
+.temp-value{font-size:24px;font-weight:600;margin-top:5px;}
+#alert-box{
+  display:none;
+  background:rgba(255,0,0,0.4);
+  padding:10px;
+  margin:10px 0;
+  border-radius:10px;
+  text-align:center;
+  font-weight:600;
+}
+.mode-container{
+  margin:15px 0;
+  text-align:center;
+}
+.mode-container select{
+  padding:6px 10px;
+  border-radius:8px;
+  border:none;
+  font-weight:600;
+}
+#manual-mode,#auto-mode{margin-top:10px;}
+.slider-container{margin:15px 0;text-align:left}
+.slider-container label{
+  display:block;
+  font-size:16px;
+  font-weight:600;
+  margin-bottom:5px;
+  color:#fff;
+  text-shadow:1px 1px 2px rgba(0,0,0,0.6);
+}
+input[type=range]{
+  -webkit-appearance:none;
+  width:100%;
+  height:12px;
+  border-radius:6px;
+  background:rgba(255,255,255,0.3);
+  outline:none;
+}
+input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;
+  width:24px;
+  height:24px;
+  border-radius:50%;
+  background:#fff;
+  border:2px solid #007bff;
+  cursor:pointer;
+}
+input[type=number]{
+  width:60px;
+  border:none;
+  border-radius:8px;
+  text-align:center;
+  padding:5px;
+  background:rgba(255,255,255,0.2);
+  color:#fff;
+}
+#batas-container{
+  background:rgba(255,255,255,0.15);
+  border-radius:12px;
+  padding:15px;
+  margin-top:15px;
+  box-shadow:0 4px 10px rgba(0,0,0,0.3);
+}
+button{
+  background:#007bff;
+  color:#fff;
+  border:none;
+  border-radius:8px;
+  padding:6px 14px;
+  cursor:pointer;
+  font-weight:600;
+}
+button:hover{background:#3399ff}
+#auto-table-container{
+  overflow-x:auto;
+  margin-top:10px;
+  background:rgba(255,255,255,0.1);
+  border-radius:10px;
+  padding:10px;
+}
+table{
+  width:100%;
+  border-collapse:collapse;
+  color:#fff;
+  font-size:14px;
+}
+th,td{
+  border:1px solid rgba(255,255,255,0.3);
+  padding:5px;
+  text-align:center;
+  white-space:nowrap;
+}
+#chart-container{
+  margin-top:25px;
+  background:rgba(255,255,255,0.1);
+  padding:15px;
+  border-radius:15px;
+  box-shadow:0 4px 10px rgba(0,0,0,0.3);
+}
+</style>
 </head>
 <body>
-  <h1>🌊 LED Dashboard ESP32</h1>
+<h1>LED Aquarium Controller</h1>
+<div id="status">🔌 Menghubungkan ke MQTT...</div>
+<div id="clock">🕒 --:--:-- WIB</div>
 
-  <!-- Status suhu -->
-  <div class="card">
-    <h3>Status Suhu</h3>
-    <p id="statusSuhu">Menunggu data...</p>
-    <p>Suhu Maksimum: <span id="suhuMaks">-- °C</span></p>
+<div class="dashboard">
+  <div class="temp-container">
+    <div class="temp-card">Atas<br><span id="temp1" class="temp-value">-- °C</span></div>
+    <div class="temp-card">Bawah<br><span id="temp2" class="temp-value">-- °C</span></div>
   </div>
 
-  <!-- Mode -->
-  <div class="card">
-    <label for="mode">Pilih Mode:</label>
-    <select id="mode" onchange="ubahMode()">
+  <div id="alert-box"></div>
+
+  <div class="mode-container">
+    <label for="modeSelect"><b>Mode:</b></label>
+    <select id="modeSelect">
       <option value="manual">Manual</option>
-      <option value="otomatis">Otomatis</option>
+      <option value="auto">Otomatis</option>
     </select>
   </div>
 
-  <!-- Bagian Manual -->
-  <div class="card" id="manualSection">
-    <h3>Mode Manual</h3>
-    <div id="manualControls"></div>
+  <div id="manual-mode">
+    <div id="led-controls"></div>
   </div>
 
-  <!-- Bagian Otomatis -->
-  <div class="card" id="otomatisSection" style="display:none;">
+  <div id="auto-mode" style="display:none">
     <h3>Mode Otomatis</h3>
-    <div id="jamRealtime" style="font-size:14px; color:#79c0ff; margin-bottom:6px;">🕒 Waktu Sekarang: --:--</div>
-    <button onclick="mulaiOtomatis()">▶️ Start Otomatis</button>
-    <div class="tabel-container">
-      <table id="tabelOtomatis">
-        <thead>
-          <tr>
-            <th>Jam</th>
-            <th>LED 1</th>
-            <th>LED 2</th>
-            <th>LED 3</th>
-            <th>LED 4</th>
-            <th>LED 5</th>
-            <th>LED 6</th>
-            <th>LED 7</th>
-            <th>LED 8</th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-    </div>
-  </div>
-
-  <!-- Grafik -->
-  <div class="card">
-    <h3>Grafik Suhu</h3>
-    <canvas id="grafikSuhu"></canvas>
-  </div>
-
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script>
-    // ==================== MODE MANUAL ====================
-    const manualControls = document.getElementById("manualControls");
-    for (let i = 1; i <= 8; i++) {
-      const div = document.createElement("div");
-      div.className = "slider-container";
-      div.innerHTML = `
-        <label>LED ${i}</label>
-        <input type="range" min="0" max="255" value="0" id="led${i}" oninput="updateLED(${i}, this.value)">
-        <span id="val${i}">0</span>
-      `;
-      manualControls.appendChild(div);
-    }
-
-    function updateLED(id, val) {
-      document.getElementById("val" + id).innerText = val;
-      fetch(`/led/${id}/${val}`); // kirim ke ESP
-    }
-
-    // ==================== MODE OTOMATIS ====================
-    const tabelBody = document.querySelector("#tabelOtomatis tbody");
-    function buatTabelOtomatis() {
-      tabelBody.innerHTML = "";
-      for (let jam = 7; jam <= 16; jam++) {
-        for (let menit of [0, 30]) {
-          const row = document.createElement("tr");
-          const waktu = `${jam.toString().padStart(2,'0')}:${menit === 0 ? "00" : "30"}`;
-          let cols = `<td>${waktu}</td>`;
-          for (let i = 1; i <= 8; i++) {
-            cols += `<td><input type="number" min="0" max="255" value="0" id="auto_${waktu}_led${i}" style="width:50px;text-align:center;background:#0d1117;color:#e6edf3;border:1px solid #30363d;border-radius:4px;"></td>`;
-          }
-          row.innerHTML = cols;
-          tabelBody.appendChild(row);
-        }
-      }
-    }
-    buatTabelOtomatis();
-
-    function ubahMode() {
-      const mode = document.getElementById("mode").value;
-      document.getElementById("manualSection").style.display = mode === "manual" ? "block" : "none";
-      document.getElementById("otomatisSection").style.display = mode === "otomatis" ? "block" : "none";
-    }
-
-    function mulaiOtomatis() {
-      const now = new Date();
-      const waktuWIB = new Date(now.getTime() + (7 * 60 * 60 * 1000));
-      const jam = waktuWIB.getUTCHours();
-      const menit = waktuWIB.getUTCMinutes();
-      const nearest = menit >= 30 ? "30" : "00";
-      const waktuKey = `${jam.toString().padStart(2,'0')}:${nearest}`;
-      for (let i = 1; i <= 8; i++) {
-        const val = document.getElementById(`auto_${waktuKey}_led${i}`);
-        if (val) {
-          fetch(`/led/${i}/${val.value}`);
-          document.getElementById("val"+i).innerText = val.value;
-          document.getElementById("led"+i).value = val.value;
-        }
-      }
-      alert(`Mode otomatis dijalankan untuk jam ${waktuKey} WIB`);
-    }
-
-    // ==================== JAM REALTIME WIB ====================
-    function updateJam() {
-      const now = new Date();
-      const wib = new Date(now.getTime() + (7 * 60 * 60 * 1000));
-      const jam = wib.getUTCHours().toString().padStart(2, "0");
-      const menit = wib.getUTCMinutes().toString().padStart(2, "0");
-      document.getElementById("jamRealtime").textContent = `🕒 Waktu Sekarang: ${jam}:${menit} WIB`;
-    }
-    setInterval(updateJam, 1000);
-    updateJam();
-
-    // ==================== GRAFIK SUHU (dummy demo) ====================
-    const ctx = document.getElementById('grafikSuhu').getContext('2d');
-    const chart = new Chart(ctx, {
-      type: 'line',
-      data: { labels: [], datasets: [{ label: 'Suhu (°C)', data: [], borderColor: '#58a6ff', tension: 0.2 }] },
-      options: { scales: { y: { beginAtZero: false } }, plugins: { legend: { display: false } } }
-    });
-
-    let dummy = 28;
-    setInterval(() => {
-      const now = new Date();
-      const t = now.toLocaleTimeString("id-ID", { hour12: false });
-      dummy += (Math.random() - 0.5);
-      chart.data.labels.push(t);
-      chart.data.datasets[0].data.push(dummy.toFixed(1));
-      if (chart.data.labels.length > 10) {
-        chart.data.labels.shift();
-        chart.data.datasets[0].data.shift();
-      }
-      chart.update();
-    }, 3000);
-  </script>
-</body>
-</html>
+    <div style="text-align:center;margin-bottom:8px;">Waktu Sekarang: <span id="autoClock">--:--:-- WIB</span></div>
+    <div id="auto-table-contain
