@@ -1,240 +1,377 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>LED Dashboard</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #f0f2f5;
-      margin: 0;
-      padding: 0;
-      text-align: center;
-    }
-    .container {
-      max-width: 800px;
-      margin: 0 auto;
-      background: white;
-      padding: 15px;
-      border-radius: 12px;
-      box-shadow: 0 0 10px rgba(0,0,0,0.1);
-    }
-    h2 {
-      margin-top: 10px;
-      color: #333;
-    }
-    #clock {
-      font-size: 18px;
-      margin-bottom: 15px;
-      color: #444;
-    }
-    .mode-select {
-      margin: 10px 0;
-    }
-    select, button, input[type="number"] {
-      padding: 5px;
-      margin: 5px;
-      border-radius: 6px;
-      border: 1px solid #ccc;
-    }
-    .manual-section, .auto-section {
-      margin-top: 15px;
-    }
-    .channel-control {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      margin: 8px 0;
-    }
-    .channel-control label {
-      width: 100%;
-      text-align: left;
-      font-weight: bold;
-      margin-bottom: 3px;
-    }
-    .temp-section, .chart-section {
-      margin-top: 20px;
-    }
-    canvas {
-      width: 100%;
-      height: 200px;
-    }
-    .auto-table {
-      max-height: 200px;
-      overflow-x: auto;
-      overflow-y: auto;
-      display: inline-block;
-      border: 1px solid #ccc;
-      border-radius: 8px;
-      margin-top: 10px;
-    }
-    table {
-      border-collapse: collapse;
-      width: 700px;
-    }
-    th, td {
-      border: 1px solid #ccc;
-      padding: 5px;
-      text-align: center;
-      font-size: 13px;
-    }
-    th {
-      background: #f4f4f4;
-      position: sticky;
-      top: 0;
-    }
-    @media (max-width: 600px) {
-      .container { width: 95%; }
-      table { width: 600px; }
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>LED Aquarium Controller</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+*{box-sizing:border-box}
+body{
+  margin:0;
+  font-family:'Inter',sans-serif;
+  background:url('https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1350&q=80') no-repeat center center fixed;
+  background-size:cover;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  min-height:100vh;
+  padding:20px;
+  color:#fff;
+}
+
+h1{
+  margin:10px 0 5px;
+  font-size:28px;
+  text-align:center;
+  text-shadow:2px 2px 6px rgba(0,0,0,0.7);
+}
+
+#status{
+  font-size:14px;
+  color:#0f0;
+  margin-bottom:10px;
+  text-shadow:1px 1px 3px rgba(0,0,0,0.5);
+}
+
+.dashboard{
+  background:rgba(255,255,255,0.1);
+  backdrop-filter:blur(15px);
+  border-radius:20px;
+  padding:25px;
+  width:100%;
+  max-width:460px;
+  box-shadow:0 8px 24px rgba(0,0,0,0.4);
+}
+
+.temp-container{
+  display:flex;
+  justify-content:space-around;
+  margin-bottom:20px;
+  flex-wrap:wrap;
+}
+
+.temp-card{
+  background:rgba(255,255,255,0.15);
+  border-radius:12px;
+  padding:15px 20px;
+  text-align:center;
+  min-width:120px;
+  margin:5px;
+  box-shadow:0 4px 10px rgba(0,0,0,0.3);
+  transition:background 0.3s;
+}
+
+.temp-value{
+  font-size:24px;
+  font-weight:600;
+  margin-top:5px;
+}
+
+.slider-container{margin:15px 0;text-align:left}
+
+.slider-container label{
+  display:block;
+  font-size:16px;
+  font-weight:600;
+  margin-bottom:5px;
+  color:#fff;
+  text-shadow:1px 1px 2px rgba(0,0,0,0.6);
+}
+
+input[type=range]{
+  -webkit-appearance:none;
+  width:100%;
+  height:12px;
+  border-radius:6px;
+  background:rgba(255,255,255,0.3);
+  outline:none;
+}
+input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;
+  width:24px;
+  height:24px;
+  border-radius:50%;
+  background:#fff;
+  border:2px solid #007bff;
+  cursor:pointer;
+}
+
+input[type=number]{
+  width:60px;
+  border:none;
+  border-radius:8px;
+  text-align:center;
+  padding:5px;
+  background:rgba(255,255,255,0.2);
+  color:#fff;
+}
+
+#alert-box{
+  display:none;
+  background:rgba(255,0,0,0.4);
+  padding:10px;
+  margin:10px 0;
+  border-radius:10px;
+  text-align:center;
+  font-weight:600;
+}
+
+#batas-container{
+  background:rgba(255,255,255,0.15);
+  border-radius:12px;
+  padding:15px;
+  margin-top:15px;
+  box-shadow:0 4px 10px rgba(0,0,0,0.3);
+}
+
+button{
+  background:#007bff;
+  color:#fff;
+  border:none;
+  border-radius:8px;
+  padding:6px 14px;
+  cursor:pointer;
+  font-weight:600;
+}
+button:hover{background:#3399ff}
+
+#chart-container{
+  margin-top:25px;
+  background:rgba(255,255,255,0.1);
+  padding:15px;
+  border-radius:15px;
+  box-shadow:0 4px 10px rgba(0,0,0,0.3);
+}
+
+/* Mode toggle */
+.mode-select{
+  margin-bottom:20px;
+  text-align:center;
+}
+#auto-container{
+  background:rgba(255,255,255,0.15);
+  border-radius:12px;
+  padding:15px;
+  margin-top:15px;
+  display:none;
+  box-shadow:0 4px 10px rgba(0,0,0,0.3);
+  max-height:300px;
+  overflow:auto;
+}
+#clock{
+  text-align:center;
+  font-size:18px;
+  font-weight:600;
+  margin-bottom:10px;
+  text-shadow:1px 1px 2px rgba(0,0,0,0.6);
+}
+.schedule-table{
+  width:100%;
+  border-collapse:collapse;
+  color:#fff;
+  font-size:14px;
+}
+.schedule-table th,.schedule-table td{
+  border-bottom:1px solid rgba(255,255,255,0.2);
+  padding:5px;
+  text-align:center;
+}
+</style>
 </head>
 <body>
-  <div class="container">
-    <h2>LED Dashboard</h2>
-    <div id="clock"></div>
+<h1>LED Aquarium Controller</h1>
+<div id="status">🔌 Menghubungkan ke MQTT...</div>
 
-    <div class="mode-select">
-      <label for="mode">Mode:</label>
-      <select id="mode" onchange="toggleMode()">
-        <option value="manual" selected>Manual</option>
-        <option value="auto">Otomatis</option>
-      </select>
-    </div>
-
-    <!-- ========== MODE MANUAL ========== -->
-    <div id="manualSection" class="manual-section">
-      <h3>Mode Manual</h3>
-      <div id="manualControls">
-        <!-- 8 channel slider -->
-        <div class="channel-control"><label>Channel 1</label><input type="range" min="0" max="255" value="0" oninput="updateLED(1,this.value)"></div>
-        <div class="channel-control"><label>Channel 2</label><input type="range" min="0" max="255" value="0" oninput="updateLED(2,this.value)"></div>
-        <div class="channel-control"><label>Channel 3</label><input type="range" min="0" max="255" value="0" oninput="updateLED(3,this.value)"></div>
-        <div class="channel-control"><label>Channel 4</label><input type="range" min="0" max="255" value="0" oninput="updateLED(4,this.value)"></div>
-        <div class="channel-control"><label>Channel 5</label><input type="range" min="0" max="255" value="0" oninput="updateLED(5,this.value)"></div>
-        <div class="channel-control"><label>Channel 6</label><input type="range" min="0" max="255" value="0" oninput="updateLED(6,this.value)"></div>
-        <div class="channel-control"><label>Channel 7</label><input type="range" min="0" max="255" value="0" oninput="updateLED(7,this.value)"></div>
-        <div class="channel-control"><label>Channel 8</label><input type="range" min="0" max="255" value="0" oninput="updateLED(8,this.value)"></div>
-      </div>
-    </div>
-
-    <!-- ========== MODE OTOMATIS ========== -->
-    <div id="autoSection" class="auto-section" style="display:none;">
-      <h3>Mode Otomatis</h3>
-      <p>Atur level tiap LED per ½ jam (07:00–16:00)</p>
-      <div class="auto-table">
-        <table id="autoTable">
-          <thead>
-            <tr>
-              <th>Jam</th>
-              <th>CH1</th><th>CH2</th><th>CH3</th><th>CH4</th>
-              <th>CH5</th><th>CH6</th><th>CH7</th><th>CH8</th>
-            </tr>
-          </thead>
-          <tbody></tbody>
-        </table>
-      </div>
-      <button onclick="startAuto()">Start Otomatis</button>
-    </div>
-
-    <!-- ========== SUHU ========== -->
-    <div class="temp-section">
-      <h3>Status Suhu</h3>
-      <p id="statusSuhu">Memuat...</p>
-      <label>Batas Suhu Maksimum: </label>
-      <input type="number" id="batasSuhu" min="30" max="90" value="50">
-      <button onclick="updateBatasSuhu()">Set</button>
-    </div>
-
-    <!-- ========== GRAFIK ========== -->
-    <div class="chart-section">
-      <h3>Grafik Suhu</h3>
-      <canvas id="chart"></canvas>
-    </div>
+<div class="dashboard">
+  <div class="mode-select">
+    <label>Pilih Mode: </label>
+    <select id="mode">
+      <option value="manual">Manual</option>
+      <option value="auto">Otomatis</option>
+    </select>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script>
-    // ========== JAM ==========
-    function updateClock() {
-      const now = new Date();
-      const jam = String(now.getHours()).padStart(2, '0');
-      const menit = String(now.getMinutes()).padStart(2, '0');
-      const detik = String(now.getSeconds()).padStart(2, '0');
-      document.getElementById("clock").textContent = `Jam: ${jam}:${menit}:${detik}`;
-    }
-    setInterval(updateClock, 1000);
-    updateClock();
+  <div class="temp-container">
+    <div class="temp-card">Atas<br><span id="temp1" class="temp-value">-- °C</span></div>
+    <div class="temp-card">Bawah<br><span id="temp2" class="temp-value">-- °C</span></div>
+  </div>
 
-    // ========== MODE ==========
-    function toggleMode() {
-      const mode = document.getElementById("mode").value;
-      document.getElementById("manualSection").style.display = (mode === "manual") ? "block" : "none";
-      document.getElementById("autoSection").style.display = (mode === "auto") ? "block" : "none";
-    }
+  <div id="alert-box"></div>
+  <div id="led-controls"></div>
 
-    // ========== MANUAL ==========
-    function updateLED(ch, val) {
-      console.log(`LED ${ch} -> ${val}`);
-      // client.publish(`led/${ch}`, val); (via MQTT di ESP)
-    }
+  <div id="auto-container">
+    <div id="clock">--:--:--</div>
+    <h3 style="text-align:center;margin-bottom:10px;">Jadwal Intensitas Otomatis</h3>
+    <div style="overflow-x:auto;">
+      <table class="schedule-table">
+        <thead>
+          <tr><th>Waktu</th><th>CH1</th><th>CH2</th><th>CH3</th><th>CH4</th><th>CH5</th><th>CH6</th><th>CH7</th><th>CH8</th></tr>
+        </thead>
+        <tbody id="schedule-body"></tbody>
+      </table>
+    </div>
+    <button id="startAuto" style="margin-top:10px;width:100%;">▶️ Start Otomatis</button>
+  </div>
 
-    // ========== AUTO TABLE ==========
-    const tbody = document.querySelector("#autoTable tbody");
-    const times = [];
-    for (let h = 7; h <= 16; h++) {
-      for (let m = 0; m < 60; m += 30) {
-        const label = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
-        times.push(label);
-      }
-    }
-    times.forEach(t => {
-      const tr = document.createElement("tr");
-      tr.innerHTML = `<td>${t}</td>` + Array.from({length:8}, (_,i)=>`<td><input type='number' min='0' max='255' value='0' style='width:60px'></td>`).join("");
-      tbody.appendChild(tr);
-    });
+  <div id="batas-container">
+    <h3>Batas Suhu Maksimum</h3>
+    <input type="number" id="batasSuhu" min="30" max="90" value="50"> °C
+    <button id="setBatas">Simpan</button>
+    <div id="batas-info" style="margin-top:8px;color:#ddd;font-size:14px;"></div>
+  </div>
 
-    function startAuto() {
-      alert("Mode otomatis dimulai sesuai jam saat ini!");
-      // Ambil waktu lokal, cocokkan baris, kirim nilai LED via MQTT ke ESP
-    }
+  <div id="chart-container">
+    <h3 style="text-align:center;margin-bottom:10px;">Grafik Suhu Real-Time</h3>
+    <canvas id="tempChart" width="400" height="200"></canvas>
+  </div>
+</div>
 
-    // ========== SUHU & GRAFIK ==========
-    const ctx = document.getElementById('chart').getContext('2d');
-    const suhuData = {
-      labels: [],
-      datasets: [{ label: 'Suhu NTC1', data: [], borderWidth: 2 },
-                 { label: 'Suhu NTC2', data: [], borderWidth: 2 }]
-    };
-    const chart = new Chart(ctx, { type: 'line', data: suhuData });
+<script>
+// ====== MQTT setup ======
+const client = mqtt.connect('wss://broker.emqx.io:8084/mqtt');
+const ledNames = ["Royal Blue","Blue","Violet","Red","Green","White","Sump","Fan"];
+const container = document.getElementById('led-controls');
+const statusText = document.getElementById('status');
 
-    function updateChart(ntc1, ntc2) {
-      const now = new Date().toLocaleTimeString();
-      suhuData.labels.push(now);
-      suhuData.datasets[0].data.push(ntc1);
-      suhuData.datasets[1].data.push(ntc2);
-      if (suhuData.labels.length > 20) {
-        suhuData.labels.shift();
-        suhuData.datasets[0].data.shift();
-        suhuData.datasets[1].data.shift();
-      }
-      chart.update();
-    }
+// ====== Sliders Manual ======
+ledNames.forEach((name,i)=>{
+  const idx=i+1;
+  container.innerHTML+=`
+  <div class="slider-container">
+    <label>${name} <input type="number" id="led${idx}-num" min="0" max="100" value="0">%</label>
+    <input type="range" id="led${idx}" min="0" max="100" value="0">
+  </div>`;
+});
 
-    function updateBatasSuhu() {
-      const batas = document.getElementById("batasSuhu").value;
-      console.log("Set batas suhu ke:", batas);
-      // client.publish("set/batasSuhu", batas);
-    }
+// ====== Auto Mode Table ======
+const scheduleBody=document.getElementById('schedule-body');
+for(let h=7;h<=16;h++){
+  const row=document.createElement('tr');
+  let html=`<td>${h.toString().padStart(2,'0')}:00</td>`;
+  for(let c=1;c<=8;c++){
+    html+=`<td><input type="number" min="0" max="100" value="0" style="width:50px;text-align:center;"></td>`;
+  }
+  row.innerHTML=html;
+  scheduleBody.appendChild(row);
+}
 
-    // simulasi suhu
-    setInterval(()=>{ 
-      const s1 = 25 + Math.random()*5;
-      const s2 = 26 + Math.random()*5;
-      updateChart(s1, s2);
-      document.getElementById("statusSuhu").textContent = `NTC1: ${s1.toFixed(1)}°C, NTC2: ${s2.toFixed(1)}°C`;
-    }, 3000);
-  </script>
+// ====== Clock real time ======
+function updateClock(){
+  const now=new Date();
+  const t=now.toLocaleTimeString('id-ID',{hour12:false});
+  document.getElementById('clock').textContent=t;
+}
+setInterval(updateClock,1000);
+updateClock();
+
+// ====== Mode switch ======
+document.getElementById('mode').addEventListener('change',e=>{
+  const val=e.target.value;
+  document.getElementById('auto-container').style.display=(val==='auto')?'block':'none';
+  document.getElementById('led-controls').style.display=(val==='manual')?'block':'none';
+});
+
+// ====== MQTT Events ======
+client.on('connect',()=>{
+  statusText.innerHTML="✅ Terhubung ke broker MQTT";
+  statusText.style.color="#0f0";
+  for(let i=1;i<=8;i++)client.subscribe('led/'+i);
+  client.subscribe('suhu/ntc1');
+  client.subscribe('suhu/ntc2');
+  client.subscribe('status/suhu');
+  client.subscribe('status/batasSuhu');
+});
+
+let lastT1=0,lastT2=0;
+client.on('message',(topic,message)=>{
+  const msg=message.toString();
+  if(topic.startsWith('led/')){
+    const num=parseInt(topic.split('/')[1]);
+    const percent=Math.round(parseInt(msg)/255*100);
+    document.getElementById('led'+num).value=percent;
+    document.getElementById('led'+num+'-num').value=percent;
+  }
+  if(topic==='suhu/ntc1'){lastT1=parseFloat(msg);updateTemp('temp1',msg);updateChart(lastT1,lastT2);}
+  if(topic==='suhu/ntc2'){lastT2=parseFloat(msg);updateTemp('temp2',msg);updateChart(lastT1,lastT2);}
+  if(topic==='status/suhu')updateAlert(msg);
+  if(topic==='status/batasSuhu')updateBatas(msg);
+});
+
+// ====== Chart.js ======
+const ctx=document.getElementById('tempChart').getContext('2d');
+const labels=[],data1=[],data2=[];
+const tempChart=new Chart(ctx,{
+  type:'line',
+  data:{labels:labels,datasets:[
+    {label:'Atas',data:data1,borderColor:'rgba(255,99,132,1)',tension:0.3,fill:false},
+    {label:'Bawah',data:data2,borderColor:'rgba(54,162,235,1)',tension:0.3,fill:false}
+  ]},
+  options:{scales:{y:{min:20,max:70}},plugins:{legend:{labels:{color:'#fff'}}}}
+});
+function updateChart(t1,t2){
+  const now=new Date().toLocaleTimeString();
+  labels.push(now);data1.push(t1);data2.push(t2);
+  if(labels.length>60){labels.shift();data1.shift();data2.shift();}
+  tempChart.update();
+}
+
+// ====== Temp Functions ======
+function updateTemp(id,val){
+  const t=parseFloat(val).toFixed(1);
+  const el=document.getElementById(id);
+  el.textContent=t+' °C';
+  const card=el.parentElement;
+  if(t>=50)card.style.background='rgba(255,0,0,0.4)';
+  else if(t>=40)card.style.background='rgba(255,215,0,0.3)';
+  else card.style.background='rgba(255,255,255,0.15)';
+}
+function updateAlert(msg){
+  const box=document.getElementById('alert-box');
+  if(msg.startsWith('TINGGI')){
+    const suhu=msg.split(':')[1];
+    box.innerHTML=`⚠️ Suhu tinggi: ${suhu} °C<br>Semua LED dimatikan.`;
+    box.style.display='block';
+  }else box.style.display='none';
+}
+function updateBatas(val){
+  document.getElementById('batasSuhu').value=parseFloat(val).toFixed(1);
+  document.getElementById('batas-info').innerText='Batas suhu saat ini: '+val+' °C';
+}
+
+// ====== Manual Sliders ======
+for(let i=1;i<=8;i++){
+  const s=document.getElementById('led'+i);
+  const n=document.getElementById('led'+i+'-num');
+  s.addEventListener('input',()=>{
+    n.value=s.value;
+    client.publish('led/'+i,Math.round(s.value*2.55).toString());
+  });
+  n.addEventListener('change',()=>{
+    let v=parseInt(n.value);
+    if(isNaN(v))v=0;
+    v=Math.min(100,Math.max(0,v));
+    n.value=v;s.value=v;
+    client.publish('led/'+i,Math.round(v*2.55).toString());
+  });
+}
+
+// ====== Set Batas Suhu ======
+document.getElementById('setBatas').addEventListener('click',()=>{
+  const val=parseFloat(document.getElementById('batasSuhu').value);
+  if(val>=30&&val<=90){
+    client.publish('set/batasSuhu',val.toString());
+    alert('Batas suhu dikirim ke ESP32: '+val+' °C');
+  }else alert('Masukkan nilai antara 30–90 °C');
+});
+
+// ====== Start Otomatis ======
+document.getElementById('startAuto').addEventListener('click',()=>{
+  client.publish('auto/start','1');
+  alert('Mode otomatis dimulai!');
+});
+</script>
 </body>
 </html>
