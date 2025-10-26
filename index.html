@@ -1,14 +1,13 @@
 <!DOCTYPE html>
-<html lang="id">
+<html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>LED Aquarium Controller</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
 <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <style>
-/* STYLE: ikuti versi "ok bagus" yang kamu setujui */
 *{box-sizing:border-box}
 body{
   margin:0;
@@ -22,45 +21,128 @@ body{
   padding:20px;
   color:#fff;
 }
-h1{ margin:10px 0 5px; font-size:28px; text-align:center; text-shadow:2px 2px 6px rgba(0,0,0,0.7); }
-#status{ font-size:14px; color:#0f0; margin-bottom:10px; text-shadow:1px 1px 3px rgba(0,0,0,0.5); }
+
+h1{
+  margin:20px 0 10px;
+  font-size:28px;
+  text-align:center;
+  text-shadow:2px 2px 6px rgba(0,0,0,0.7);
+}
+
+#status{
+  font-size:14px;
+  color:#0f0;
+  margin-bottom:10px;
+  text-shadow:1px 1px 3px rgba(0,0,0,0.5);
+}
+
 .dashboard{
   background:rgba(255,255,255,0.1);
   backdrop-filter:blur(15px);
   border-radius:20px;
-  padding:20px;
+  padding:25px;
   width:100%;
   max-width:460px;
   box-shadow:0 8px 24px rgba(0,0,0,0.4);
 }
-.temp-container{ display:flex; justify-content:space-around; margin-bottom:12px; flex-wrap:wrap; }
+
+.temp-container{
+  display:flex;
+  justify-content:space-around;
+  margin-bottom:20px;
+}
+
 .temp-card{
   background:rgba(255,255,255,0.15);
-  border-radius:12px; padding:12px 16px; text-align:center; min-width:110px; margin:5px;
-  box-shadow:0 4px 10px rgba(0,0,0,0.3); transition:background 0.3s;
+  border-radius:12px;
+  padding:15px 20px;
+  text-align:center;
+  min-width:120px;
+  box-shadow:0 4px 10px rgba(0,0,0,0.3);
+  transition:background 0.3s;
 }
-.temp-value{ font-size:22px; font-weight:600; margin-top:6px; }
-.slider-container{ margin:12px 0; text-align:left; }
-.slider-container label{ display:block; font-size:15px; font-weight:600; margin-bottom:6px; color:#fff; text-shadow:1px 1px 2px rgba(0,0,0,0.6); }
-input[type=range]{ -webkit-appearance:none; width:100%; height:12px; border-radius:6px; background:rgba(255,255,255,0.3); outline:none; }
-input[type=range]::-webkit-slider-thumb{ -webkit-appearance:none; width:22px; height:22px; border-radius:50%; background:#fff; border:2px solid #007bff; cursor:pointer; }
-input[type=number]{ width:60px; border:none; border-radius:8px; text-align:center; padding:6px; background:rgba(255,255,255,0.2); color:#fff; }
-#alert-box{ display:none; background:rgba(255,0,0,0.4); padding:10px; margin:8px 0; border-radius:10px; text-align:center; font-weight:600; }
-#batas-container{ background:rgba(255,255,255,0.15); border-radius:12px; padding:12px; margin-top:10px; box-shadow:0 4px 10px rgba(0,0,0,0.3); }
-button{ background:#007bff; color:#fff; border:none; border-radius:8px; padding:6px 14px; cursor:pointer; font-weight:600; }
-button:hover{ background:#3399ff }
-#chart-container{ margin-top:14px; background:rgba(255,255,255,0.1); padding:12px; border-radius:12px; box-shadow:0 4px 10px rgba(0,0,0,0.3); }
-.mode-select{ margin-bottom:10px; text-align:center; }
-#auto-container{ background:rgba(255,255,255,0.12); border-radius:12px; padding:12px; margin-top:12px; display:none; box-shadow:0 4px 10px rgba(0,0,0,0.3); max-height:300px; overflow:auto; }
-#clock{ text-align:center; font-size:18px; font-weight:600; margin-bottom:8px; text-shadow:1px 1px 2px rgba(0,0,0,0.6); }
-.schedule-table{ width:100%; border-collapse:collapse; color:#fff; font-size:14px; white-space:nowrap; }
-.schedule-table th,.schedule-table td{ border-bottom:1px solid rgba(255,255,255,0.18); padding:6px; text-align:center; }
-.save-row{ display:flex; gap:8px; margin-top:8px; }
-@media (max-width:768px){
-  .dashboard{width:100%; padding:16px}
-  .schedule-table{ font-size:12px }
-  input[type=range]{ width:90% }
-  canvas{ width:100%!important; height:auto!important }
+
+.temp-value{
+  font-size:24px;
+  font-weight:600;
+  margin-top:5px;
+}
+
+.slider-container{margin:15px 0;text-align:left}
+
+.slider-container label{
+  display:block;
+  font-size:16px;
+  font-weight:600;
+  margin-bottom:5px;
+  color:#fff;
+  text-shadow:1px 1px 2px rgba(0,0,0,0.6);
+}
+
+input[type=range]{
+  -webkit-appearance:none;
+  width:100%;
+  height:12px;
+  border-radius:6px;
+  background:rgba(255,255,255,0.3);
+  outline:none;
+  transition:background 0.3s;
+}
+input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;
+  width:24px;
+  height:24px;
+  border-radius:50%;
+  background:#fff;
+  border:2px solid #007bff;
+  cursor:pointer;
+}
+
+input[type=number]{
+  width:60px;
+  border:none;
+  border-radius:8px;
+  text-align:center;
+  padding:5px;
+  background:rgba(255,255,255,0.2);
+  color:#fff;
+}
+
+#alert-box{
+  display:none;
+  background:rgba(255,0,0,0.4);
+  padding:10px;
+  margin:10px 0;
+  border-radius:10px;
+  text-align:center;
+  font-weight:600;
+}
+
+#batas-container{
+  background:rgba(255,255,255,0.15);
+  border-radius:12px;
+  padding:15px;
+  margin-top:15px;
+  box-shadow:0 4px 10px rgba(0,0,0,0.3);
+}
+
+button{
+  background:#007bff;
+  color:#fff;
+  border:none;
+  border-radius:8px;
+  padding:6px 14px;
+  cursor:pointer;
+  font-weight:600;
+}
+button:hover{background:#3399ff}
+
+#chart-container{
+  margin-top:25px;
+  background:rgba(255,255,255,0.1);
+  padding:15px;
+  border-radius:15px;
+  box-shadow:0 4px 10px rgba(0,0,0,0.3);
 }
 </style>
 </head>
@@ -69,14 +151,6 @@ button:hover{ background:#3399ff }
 <div id="status">🔌 Menghubungkan ke MQTT...</div>
 
 <div class="dashboard">
-  <div class="mode-select">
-    <label for="modeSelect" style="font-weight:600;">Mode:</label>
-    <select id="modeSelect">
-      <option value="manual">Manual</option>
-      <option value="auto">Otomatis</option>
-    </select>
-  </div>
-
   <div class="temp-container">
     <div class="temp-card">Atas<br><span id="temp1" class="temp-value">-- °C</span></div>
     <div class="temp-card">Bawah<br><span id="temp2" class="temp-value">-- °C</span></div>
@@ -86,24 +160,6 @@ button:hover{ background:#3399ff }
 
   <div id="led-controls"></div>
 
-  <div id="auto-container">
-    <div id="clock">--:--:--</div>
-    <h3 style="text-align:center;margin-bottom:8px;">Jadwal Intensitas Otomatis (07:00–16:00)</h3>
-    <div style="overflow-x:auto;">
-      <table class="schedule-table" id="scheduleTable">
-        <thead>
-          <tr><th>Waktu</th><th>RB</th><th>B</th><th>V</th><th>R</th><th>G</th><th>W</th><th>S</th><th>F</th></tr>
-        </thead>
-        <tbody id="scheduleBody"></tbody>
-      </table>
-    </div>
-
-    <div class="save-row">
-      <button id="saveSchedule" style="flex:1;">Save Schedule (ESP EEPROM)</button>
-      <button id="startAuto" style="flex:1;">▶️ Start Otomatis</button>
-    </div>
-  </div>
-
   <div id="batas-container">
     <h3>Batas Suhu Maksimum</h3>
     <input type="number" id="batasSuhu" min="30" max="90" value="50"> °C
@@ -112,212 +168,146 @@ button:hover{ background:#3399ff }
   </div>
 
   <div id="chart-container">
-    <h3 style="text-align:center;margin-bottom:8px;">Grafik Suhu Real-Time</h3>
-    <canvas id="tempChart" width="400" height="180"></canvas>
+    <h3 style="text-align:center;margin-bottom:10px;">Grafik Suhu Real-Time</h3>
+    <canvas id="tempChart" width="400" height="200"></canvas>
   </div>
 </div>
 
 <script>
-/* ========== Konfigurasi & konstanta ========== */
-const MQTT_BROKER = 'wss://broker.emqx.io:8084/mqtt'; // ganti sesuai
-const client = mqtt.connect(MQTT_BROKER, { clientId:'dash_' + Math.random().toString(16).substr(2,8), clean:true });
+// ====== MQTT setup ======
+const client = mqtt.connect('wss://broker.emqx.io:8084/mqtt');
 const ledNames = ["Royal Blue","Blue","Violet","Red","Green","White","Sump","Fan"];
-const scheduleSlots = [];
-for(let h=7; h<=16; h++){ scheduleSlots.push(`${String(h).padStart(2,'0')}:00`); if(h<16) scheduleSlots.push(`${String(h).padStart(2,'0')}:30`); }
-const SLOT_COUNT = scheduleSlots.length; // 19
-const LS_SCHEDULE = 'aquarium_schedule_v2';
-const LS_MODE = 'aquarium_mode_v2';
-const LS_BATAS = 'aquarium_batas_v2';
+const container = document.getElementById('led-controls');
+const statusText = document.getElementById('status');
 
-/* ========== Build UI ========== */
-const ledControls = document.getElementById('led-controls');
+// ====== Buat slider kontrol LED ======
 ledNames.forEach((name,i)=>{
   const idx = i+1;
-  const div = document.createElement('div');
-  div.className = 'slider-container';
-  div.innerHTML = `<label>${name} <input type="number" id="led${idx}-num" min="0" max="100" value="0">%</label>
-                   <input type="range" id="led${idx}" min="0" max="100" value="0">`;
-  ledControls.appendChild(div);
+  container.innerHTML += `
+    <div class="slider-container">
+      <label>${name} <input type="number" id="led${idx}-num" min="0" max="100" value="0">%</label>
+      <input type="range" id="led${idx}" min="0" max="100" value="0">
+    </div>`;
 });
 
-/* build schedule table */
-const scheduleBody = document.getElementById('scheduleBody');
-for(const t of scheduleSlots){
-  const tr = document.createElement('tr');
-  let html = `<td>${t}</td>`;
-  for(let c=1;c<=8;c++){
-    html += `<td><input data-time="${t}" data-led="${c}" class="sched-inp" type="number" min="0" max="100" value="0" style="width:60px;text-align:center;"></td>`;
-  }
-  tr.innerHTML = html;
-  scheduleBody.appendChild(tr);
-}
-
-/* ========== Clock ========== */
-function updateClock(){ const now=new Date(); const t=now.toLocaleTimeString('id-ID',{hour12:false}); document.getElementById('clock').textContent = t; }
-setInterval(updateClock,1000); updateClock();
-
-/* ========== Chart.js ========== */
+// ====== Chart.js setup ======
 const ctx = document.getElementById('tempChart').getContext('2d');
-const labels = [], data1 = [], data2 = [];
-const tempChart = new Chart(ctx, { type:'line', data:{labels, datasets:[{label:'Atas',data:data1,borderColor:'rgba(255,99,132,1)',tension:0.3,fill:false},{label:'Bawah',data:data2,borderColor:'rgba(54,162,235,1)',tension:0.3,fill:false}]}, options:{scales:{y:{min:15,max:80}},plugins:{legend:{labels:{color:'#fff'}}}}});
-function pushChart(a,b){ const now=new Date().toLocaleTimeString(); labels.push(now); data1.push(a); data2.push(b); if(labels.length>60){labels.shift();data1.shift();data2.shift();} tempChart.update(); }
+const labels = [];
+const data1 = [];
+const data2 = [];
+const tempChart = new Chart(ctx,{
+  type:'line',
+  data:{
+    labels:labels,
+    datasets:[
+      {label:'Atas',data:data1,borderColor:'rgba(255,99,132,1)',tension:0.3,fill:false},
+      {label:'Bawah',data:data2,borderColor:'rgba(54,162,235,1)',tension:0.3,fill:false}
+    ]
+  },
+  options:{
+    scales:{y:{min:20,max:70}},
+    plugins:{legend:{labels:{color:'#fff'}}}
+  }
+});
 
-/* ========== MQTT handlers ========== */
-client.on('connect', ()=>{
-  document.getElementById('status').innerText = '✅ Terhubung ke broker MQTT'; document.getElementById('status').style.color='#0f0';
+function updateChart(t1,t2){
+  const now = new Date().toLocaleTimeString();
+  labels.push(now);
+  data1.push(t1);
+  data2.push(t2);
+  if(labels.length>60){labels.shift();data1.shift();data2.shift();}
+  tempChart.update();
+}
+
+// ====== MQTT events ======
+client.on('connect',()=>{
+  statusText.innerHTML="✅ Terhubung ke broker MQTT";
+  statusText.style.color="#0f0";
   for(let i=1;i<=8;i++) client.subscribe('led/'+i);
-  client.subscribe('suhu/ntc1'); client.subscribe('suhu/ntc2');
-  client.subscribe('status/suhu'); client.subscribe('status/batasSuhu');
-  client.subscribe('auto/dump'); client.subscribe('auto/ack');
-  // request ESP to send saved schedule (dump) so dashboard syncs
-  setTimeout(()=> client.publish('auto/request_dump', '1'), 400);
-  // also load local fallback then sync
-  loadLocalAndTrySync();
+  client.subscribe('suhu/ntc1');
+  client.subscribe('suhu/ntc2');
+  client.subscribe('status/suhu');
+  client.subscribe('status/batasSuhu');
 });
-client.on('reconnect', ()=>{ document.getElementById('status').innerText='♻️ Menghubungkan ulang...'; document.getElementById('status').style.color='#ff0';});
-client.on('offline', ()=>{ document.getElementById('status').innerText='❌ Terputus dari MQTT'; document.getElementById('status').style.color='#f00'; });
 
-client.on('message', (topic, message) => {
+client.on('reconnect',()=>{
+  statusText.innerHTML="♻️ Menghubungkan ulang...";
+  statusText.style.color="#ff0";
+});
+
+client.on('offline',()=>{
+  statusText.innerHTML="❌ Terputus dari MQTT";
+  statusText.style.color="#f00";
+});
+
+let lastT1=0,lastT2=0;
+client.on('message',(topic,message)=>{
   const msg = message.toString();
+
   if(topic.startsWith('led/')){
-    const idx = parseInt(topic.split('/')[1]);
-    const perc = Math.round(parseInt(msg)/255*100);
-    const s = document.getElementById('led'+idx);
-    const n = document.getElementById('led'+idx+'-num');
-    if(s) s.value = perc; if(n) n.value = perc;
-  } else if(topic === 'suhu/ntc1'){ document.getElementById('temp1').innerText = parseFloat(msg).toFixed(1)+' °C'; pushChart(parseFloat(msg), null); }
-  else if(topic === 'suhu/ntc2'){ document.getElementById('temp2').innerText = parseFloat(msg).toFixed(1)+' °C'; pushChart(null, parseFloat(msg)); }
-  else if(topic === 'status/suhu'){ const box=document.getElementById('alert-box'); if(msg.startsWith('TINGGI')){ box.style.display='block'; box.innerHTML = `⚠️ ${msg}`;} else box.style.display='none'; }
-  else if(topic === 'status/batasSuhu'){ document.getElementById('batasSuhu').value = parseFloat(msg).toFixed(1); document.getElementById('batas-info').innerText = 'Batas suhu saat ini: '+msg+' °C'; }
-  else if(topic === 'auto/dump'){
-    // ESP sends JSON string with schedule object: { slots: { "07:00":[v1..v8], ... } }
-    try {
-      const obj = JSON.parse(msg);
-      if(obj && obj.slots){
-        // fill table
-        document.querySelectorAll('.sched-inp').forEach(inp=>{ const t=inp.dataset.time; const led=inp.dataset.led; if(obj.slots[t] && typeof obj.slots[t][led-1] !== 'undefined'){ inp.value = obj.slots[t][led-1]; }});
-        // save to localStorage as copy
-        localStorage.setItem(LS_SCHEDULE, msg);
-        alert('Jadwal otomatis di-load dari ESP.');
-      }
-    } catch(e){ console.warn('auto/dump parse error', e); }
-  } else if(topic === 'auto/ack'){
-    // ack: saved
-    if(msg === 'saved') alert('ESP: Jadwal tersimpan di EEPROM.');
+    const num = parseInt(topic.split('/')[1]);
+    const percent = Math.round(parseInt(msg)/255*100);
+    document.getElementById('led'+num).value=percent;
+    document.getElementById('led'+num+'-num').value=percent;
   }
+
+  if(topic==='suhu/ntc1'){ lastT1=parseFloat(msg); updateTemp('temp1',msg); updateChart(lastT1,lastT2); }
+  if(topic==='suhu/ntc2'){ lastT2=parseFloat(msg); updateTemp('temp2',msg); updateChart(lastT1,lastT2); }
+  if(topic==='status/suhu') updateAlert(msg);
+  if(topic==='status/batasSuhu') updateBatas(msg);
 });
 
-/* ========== Manual slider publish (only when mode manual) ========== */
-function modeIsManual(){ return document.getElementById('modeSelect').value === 'manual'; }
+// ====== Fungsi suhu & alert ======
+function updateTemp(id,val){
+  const t=parseFloat(val).toFixed(1);
+  const el=document.getElementById(id);
+  el.textContent=t+' °C';
+  const card=el.parentElement;
+  if(t>=50) card.style.background='rgba(255,0,0,0.4)';
+  else if(t>=40) card.style.background='rgba(255,215,0,0.3)';
+  else card.style.background='rgba(255,255,255,0.15)';
+}
+
+function updateAlert(msg){
+  const box=document.getElementById('alert-box');
+  if(msg.startsWith('TINGGI')){
+    const suhu=msg.split(':')[1];
+    box.innerHTML=`⚠️ Suhu tinggi: ${suhu} °C<br>Semua LED dimatikan.`;
+    box.style.display='block';
+  }else box.style.display='none';
+}
+
+function updateBatas(val){
+  document.getElementById('batasSuhu').value=parseFloat(val).toFixed(1);
+  document.getElementById('batas-info').innerText='Batas suhu saat ini: '+val+' °C';
+}
+
+// ====== Slider dan input LED ======
 for(let i=1;i<=8;i++){
-  const s = document.getElementById('led'+i);
-  const n = document.getElementById('led'+i+'-num');
-  s.addEventListener('input', ()=>{ n.value = s.value; if(modeIsManual()) client.publish('led/'+i, String(Math.round(s.value*2.55))); });
-  n.addEventListener('change', ()=>{ let v = parseInt(n.value)||0; v=Math.max(0,Math.min(100,v)); n.value=v; s.value=v; if(modeIsManual()) client.publish('led/'+i, String(Math.round(v*2.55))); });
-}
-
-/* ========== Save batas suhu ========== */
-document.getElementById('setBatas').addEventListener('click', ()=>{
-  const val = parseFloat(document.getElementById('batasSuhu').value);
-  if(isNaN(val) || val < 30 || val > 90){ alert('Masukkan nilai 30–90 °C'); return; }
-  client.publish('set/batasSuhu', String(val));
-  localStorage.setItem(LS_BATAS, String(val));
-  alert('Batas suhu dikirim ke ESP.');
-});
-
-/* ========== Schedule input change -> save to local quickly ========== */
-document.querySelectorAll('.sched-inp').forEach(inp=>{
-  inp.addEventListener('change', ()=>{
-    let v = parseInt(inp.value) || 0; v = Math.max(0,Math.min(100,v)); inp.value = v;
-    saveScheduleToLocal(); // quick local save
+  const s=document.getElementById('led'+i);
+  const n=document.getElementById('led'+i+'-num');
+  s.addEventListener('input',()=>{
+    n.value=s.value;
+    client.publish('led/'+i,Math.round(s.value*2.55).toString());
   });
-});
-
-/* ========== Save schedule to ESP (publish cells then auto/save) ========== */
-document.getElementById('saveSchedule').addEventListener('click', ()=>{
-  publishFullScheduleToESP();
-  setTimeout(()=> client.publish('auto/save','1'), 300);
-  alert('Mengirim jadwal ke ESP dan menyimpan ke EEPROM...');
-});
-
-/* ========== Publish all cells helper ========== */
-function publishFullScheduleToESP(){
-  document.querySelectorAll('.sched-inp').forEach(inp=>{
-    const t = inp.dataset.time;
-    const led = inp.dataset.led;
-    const v = parseInt(inp.value) || 0;
-    const payload = String(Math.round(v * 2.55));
-    client.publish(`auto/set/${t}/${led}`, payload);
+  n.addEventListener('change',()=>{
+    let v=parseInt(n.value);
+    if(isNaN(v))v=0;
+    v=Math.min(100,Math.max(0,v));
+    n.value=v;s.value=v;
+    client.publish('led/'+i,Math.round(v*2.55).toString());
   });
 }
 
-/* ========== Start Auto ========== */
-document.getElementById('startAuto').addEventListener('click', ()=>{
-  client.publish('auto/start','1');
-  alert('Perintah Start Otomatis dikirim ke ESP.');
-});
-
-/* ========== Mode select UI handling ========== */
-document.getElementById('modeSelect').addEventListener('change', ()=>{
-  const isAuto = document.getElementById('modeSelect').value === 'auto';
-  // show/hide auto block (you asked earlier for visible only when auto)
-  document.getElementById('auto-container').style.display = isAuto ? 'block' : 'none';
-  // disable sliders when auto
-  for(let i=1;i<=8;i++){ document.getElementById('led'+i).disabled = isAuto; document.getElementById('led'+i+'-num').disabled = isAuto; }
-  // publish mode so ESP acts accordingly
-  client.publish('mode/set', isAuto ? 'auto' : 'manual');
-  localStorage.setItem(LS_MODE, isAuto ? 'auto' : 'manual');
-});
-
-/* ========== Local storage helpers ========== */
-function saveScheduleToLocal(){
-  const obj = { slots: {} };
-  document.querySelectorAll('.sched-inp').forEach(inp=>{
-    const t = inp.dataset.time; const led = parseInt(inp.dataset.led);
-    obj.slots[t] = obj.slots[t] || [];
-    obj.slots[t][led-1] = parseInt(inp.value) || 0;
-  });
-  localStorage.setItem(LS_SCHEDULE, JSON.stringify(obj));
-}
-function loadScheduleFromLocal(){
-  const raw = localStorage.getItem(LS_SCHEDULE);
-  if(!raw) return false;
-  try{
-    const obj = JSON.parse(raw);
-    if(obj && obj.slots){
-      document.querySelectorAll('.sched-inp').forEach(inp=>{
-        const t = inp.dataset.time; const led = parseInt(inp.dataset.led);
-        if(obj.slots[t] && typeof obj.slots[t][led-1] !== 'undefined') inp.value = obj.slots[t][led-1];
-      });
-      return true;
-    }
-  }catch(e){ console.warn('local load fail', e); }
-  return false;
-}
-function saveModeToLocal(){ localStorage.setItem(LS_MODE, document.getElementById('modeSelect').value); }
-function loadModeFromLocal(){ const m = localStorage.getItem(LS_MODE); if(m){ document.getElementById('modeSelect').value = m; document.getElementById('modeSelect').dispatchEvent(new Event('change')); } }
-function loadLocalAndTrySync(){
-  // try load from ESP will come via auto/dump; meanwhile fallback to local
-  const ok = loadScheduleFromLocal();
-  const batas = localStorage.getItem(LS_BATAS);
-  if(batas) document.getElementById('batasSuhu').value = batas;
-  loadModeFromLocal();
-  // if local loaded, send it to ESP after small delay (only if ESP doesn't respond)
-  if(ok){
-    setTimeout(()=> {
-      // If auto/dump hasn't arrived by then, push local to ESP
-      // We'll check a flag if ESP dumped within 1.5s, else push
-      if(!window._espDumpReceived) publishFullScheduleToESP();
-    }, 1500);
+// ====== Set batas suhu ======
+document.getElementById('setBatas').addEventListener('click',()=>{
+  const val=parseFloat(document.getElementById('batasSuhu').value);
+  if(val>=30 && val<=90){
+    client.publish('set/batasSuhu',val.toString());
+    alert('Batas suhu dikirim ke ESP32: '+val+' °C');
+  }else{
+    alert('Masukkan nilai antara 30–90 °C');
   }
-}
-
-/* mark when ESP dump arrives */
-client.on('message', (topic, message) => { if(topic === 'auto/dump') window._espDumpReceived = true; });
-
-/* === startup load === */
-document.addEventListener('DOMContentLoaded', ()=>{
-  loadLocalAndTrySync();
 });
 </script>
 </body>
