@@ -1,13 +1,14 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>LED Aquarium Controller</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
 <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <style>
+/* === STYLE: tetap sama seperti versi "ok bagus" === */
 *{box-sizing:border-box}
 body{
   margin:0;
@@ -21,21 +22,18 @@ body{
   padding:20px;
   color:#fff;
 }
-
 h1{
   margin:10px 0 5px;
   font-size:28px;
   text-align:center;
   text-shadow:2px 2px 6px rgba(0,0,0,0.7);
 }
-
 #status{
   font-size:14px;
   color:#0f0;
   margin-bottom:10px;
   text-shadow:1px 1px 3px rgba(0,0,0,0.5);
 }
-
 .dashboard{
   background:rgba(255,255,255,0.1);
   backdrop-filter:blur(15px);
@@ -45,14 +43,12 @@ h1{
   max-width:460px;
   box-shadow:0 8px 24px rgba(0,0,0,0.4);
 }
-
 .temp-container{
   display:flex;
   justify-content:space-around;
   margin-bottom:20px;
   flex-wrap:wrap;
 }
-
 .temp-card{
   background:rgba(255,255,255,0.15);
   border-radius:12px;
@@ -63,15 +59,12 @@ h1{
   box-shadow:0 4px 10px rgba(0,0,0,0.3);
   transition:background 0.3s;
 }
-
 .temp-value{
   font-size:24px;
   font-weight:600;
   margin-top:5px;
 }
-
 .slider-container{margin:15px 0;text-align:left}
-
 .slider-container label{
   display:block;
   font-size:16px;
@@ -80,7 +73,6 @@ h1{
   color:#fff;
   text-shadow:1px 1px 2px rgba(0,0,0,0.6);
 }
-
 input[type=range]{
   -webkit-appearance:none;
   width:100%;
@@ -98,7 +90,6 @@ input[type=range]::-webkit-slider-thumb{
   border:2px solid #007bff;
   cursor:pointer;
 }
-
 input[type=number]{
   width:60px;
   border:none;
@@ -108,7 +99,6 @@ input[type=number]{
   background:rgba(255,255,255,0.2);
   color:#fff;
 }
-
 #alert-box{
   display:none;
   background:rgba(255,0,0,0.4);
@@ -118,7 +108,6 @@ input[type=number]{
   text-align:center;
   font-weight:600;
 }
-
 #batas-container{
   background:rgba(255,255,255,0.15);
   border-radius:12px;
@@ -126,7 +115,6 @@ input[type=number]{
   margin-top:15px;
   box-shadow:0 4px 10px rgba(0,0,0,0.3);
 }
-
 button{
   background:#007bff;
   color:#fff;
@@ -137,7 +125,6 @@ button{
   font-weight:600;
 }
 button:hover{background:#3399ff}
-
 #chart-container{
   margin-top:25px;
   background:rgba(255,255,255,0.1);
@@ -145,7 +132,6 @@ button:hover{background:#3399ff}
   border-radius:15px;
   box-shadow:0 4px 10px rgba(0,0,0,0.3);
 }
-
 /* Mode toggle */
 .mode-select{
   margin-bottom:20px;
@@ -179,6 +165,13 @@ button:hover{background:#3399ff}
   padding:5px;
   text-align:center;
 }
+@media (max-width:768px){
+  body{padding:10px;font-size:14px}
+  .dashboard{width:100%;padding:15px}
+  .schedule-table{font-size:12px}
+  input[type=range]{width:90%}
+  canvas{width:100%!important;height:auto!important}
+}
 </style>
 </head>
 <body>
@@ -188,7 +181,7 @@ button:hover{background:#3399ff}
 <div class="dashboard">
   <div class="mode-select">
     <label>Pilih Mode: </label>
-    <select id="mode">
+    <select id="modeSelect">
       <option value="manual">Manual</option>
       <option value="auto">Otomatis</option>
     </select>
@@ -200,13 +193,14 @@ button:hover{background:#3399ff}
   </div>
 
   <div id="alert-box"></div>
+
   <div id="led-controls"></div>
 
   <div id="auto-container">
     <div id="clock">--:--:--</div>
     <h3 style="text-align:center;margin-bottom:10px;">Jadwal Intensitas Otomatis</h3>
     <div style="overflow-x:auto;">
-      <table class="schedule-table">
+      <table class="schedule-table" id="scheduleTable">
         <thead>
           <tr><th>Waktu</th><th>CH1</th><th>CH2</th><th>CH3</th><th>CH4</th><th>CH5</th><th>CH6</th><th>CH7</th><th>CH8</th></tr>
         </thead>
@@ -230,148 +224,369 @@ button:hover{background:#3399ff}
 </div>
 
 <script>
-// ====== MQTT setup ======
-const client = mqtt.connect('wss://broker.emqx.io:8084/mqtt');
+/* ===========================
+   CONFIG & STATE
+   =========================== */
+const MQTT_BROKER = 'wss://broker.emqx.io:8084/mqtt'; // ganti jika perlu
+const client = mqtt.connect(MQTT_BROKER);
 const ledNames = ["Royal Blue","Blue","Violet","Red","Green","White","Sump","Fan"];
-const container = document.getElementById('led-controls');
-const statusText = document.getElementById('status');
+const scheduleTimes = []; // list of "HH:MM" slots (07:00..16:30)
+for (let h=7; h<=16; h++){
+  scheduleTimes.push(`${String(h).padStart(2,'0')}:00`);
+  if (h < 16) scheduleTimes.push(`${String(h).padStart(2,'0')}:30`);
+}
+let lastPublishedSlot = null; // untuk mencegah publish berulang di menit yang sama
+let lastMinuteChecked = null;
 
-// ====== Sliders Manual ======
+/* ===========================
+   UI BUILD
+   =========================== */
+const ledControls = document.getElementById('led-controls');
 ledNames.forEach((name,i)=>{
-  const idx=i+1;
-  container.innerHTML+=`
-  <div class="slider-container">
+  const idx = i+1;
+  const div = document.createElement('div');
+  div.className = 'slider-container';
+  div.innerHTML = `
     <label>${name} <input type="number" id="led${idx}-num" min="0" max="100" value="0">%</label>
     <input type="range" id="led${idx}" min="0" max="100" value="0">
-  </div>`;
+  `;
+  ledControls.appendChild(div);
 });
 
-// ====== Auto Mode Table ======
-const scheduleBody=document.getElementById('schedule-body');
-for(let h=7;h<=16;h++){
-  const row=document.createElement('tr');
-  let html=`<td>${h.toString().padStart(2,'0')}:00</td>`;
-  for(let c=1;c<=8;c++){
-    html+=`<td><input type="number" min="0" max="100" value="0" style="width:50px;text-align:center;"></td>`;
+// build schedule table rows
+const scheduleBody = document.getElementById('schedule-body');
+scheduleTimes.forEach(time=>{
+  const token = time.replace(':','-');
+  const tr = document.createElement('tr');
+  let html = `<td>${time}</td>`;
+  for (let i=1;i<=8;i++){
+    html += `<td><input id="auto-${token}-${i}" type="number" min="0" max="100" value="0" style="width:60px;text-align:center;"></td>`;
   }
-  row.innerHTML=html;
-  scheduleBody.appendChild(row);
+  tr.innerHTML = html;
+  scheduleBody.appendChild(tr);
+});
+
+/* ===========================
+   localStorage helpers
+   =========================== */
+function saveToStorage(key, obj){
+  try { localStorage.setItem(key, JSON.stringify(obj)); } catch(e){ console.warn('localStorage full?',e); }
+}
+function loadFromStorage(key, defaultVal){
+  try { const v=localStorage.getItem(key); return v?JSON.parse(v):defaultVal; } catch(e){ return defaultVal; }
 }
 
-// ====== Clock real time ======
-function updateClock(){
-  const now=new Date();
-  const t=now.toLocaleTimeString('id-ID',{hour12:false});
-  document.getElementById('clock').textContent=t;
+/* load saved state */
+const savedSchedule = loadFromStorage('led_schedule', {}); // { "07:00":[...8], ... }
+const savedMode = loadFromStorage('led_mode', 'manual'); // 'manual'|'auto'
+const savedSliders = loadFromStorage('led_sliders', {}); // {1:percent,...}
+const savedBatas = loadFromStorage('batas_suhu', null);
+
+/* populate UI from storage */
+if(savedBatas !== null) {
+  document.getElementById('batasSuhu').value = savedBatas;
+  document.getElementById('batas-info').innerText = 'Batas suhu saat ini: ' + savedBatas + ' °C';
 }
-setInterval(updateClock,1000);
+for (let i=1;i<=8;i++){
+  const s = document.getElementById('led'+i);
+  const n = document.getElementById('led'+i+'-num');
+  const val = (savedSliders[i] !== undefined) ? savedSliders[i] : 0;
+  s.value = val;
+  n.value = val;
+}
+
+/* populate schedule table */
+scheduleTimes.forEach(time=>{
+  const token = time.replace(':','-');
+  const arr = savedSchedule[time] || Array(8).fill(0);
+  for (let i=1;i<=8;i++){
+    const inp = document.getElementById(`auto-${token}-${i}`);
+    if(inp){
+      inp.value = arr[i-1];
+    }
+  }
+});
+
+/* save schedule cell on change (and publish auto/set/<time>/<led>) */
+scheduleTimes.forEach(time=>{
+  const token = time.replace(':','-');
+  for (let i=1;i<=8;i++){
+    const inp = document.getElementById(`auto-${token}-${i}`);
+    if(!inp) continue;
+    inp.addEventListener('change', ()=>{
+      let v = parseInt(inp.value);
+      if (isNaN(v)) v = 0;
+      v = Math.max(0, Math.min(100, v));
+      inp.value = v;
+      // update savedSchedule and persist
+      const sched = loadFromStorage('led_schedule', {});
+      if(!sched[time]) sched[time] = Array(8).fill(0);
+      sched[time][i-1] = v;
+      saveToStorage('led_schedule', sched);
+      // publish per-cell to ESP so ESP also knows: topic auto/set/<HH:MM>/<led> payload 0-255
+      const payload = Math.round(v * 2.55);
+      client.publish(`auto/set/${time}/${i}`, String(payload));
+    });
+  }
+});
+
+/* sliders: save and publish (only if mode manual) */
+for (let i=1;i<=8;i++){
+  const s = document.getElementById('led'+i);
+  const n = document.getElementById('led'+i+'-num');
+  s.addEventListener('input', ()=>{
+    n.value = s.value;
+    const mode = loadFromStorage('led_mode','manual');
+    // save slider value
+    const sliders = loadFromStorage('led_sliders', {});
+    sliders[i] = parseInt(s.value);
+    saveToStorage('led_sliders', sliders);
+    // publish only when manual mode
+    if (mode === 'manual' && client.connected) {
+      client.publish(`led/${i}`, String(Math.round(s.value * 2.55)));
+    }
+  });
+  n.addEventListener('change', ()=>{
+    let v = parseInt(n.value);
+    if (isNaN(v)) v = 0; v = Math.max(0, Math.min(100, v));
+    n.value = v; s.value = v;
+    const sliders = loadFromStorage('led_sliders', {});
+    sliders[i] = parseInt(v);
+    saveToStorage('led_sliders', sliders);
+    const mode = loadFromStorage('led_mode','manual');
+    if (mode === 'manual' && client.connected) client.publish(`led/${i}`, String(Math.round(v * 2.55)));
+  });
+}
+
+/* mode select */
+const modeSelect = document.getElementById('modeSelect');
+modeSelect.value = savedMode || 'manual';
+function applyModeUI(mode){
+  // show/hide auto container and disable/enable sliders
+  document.getElementById('auto-container').style.display = (mode==='auto') ? 'block' : 'none';
+  document.getElementById('led-controls').style.display = (mode==='manual') ? 'block' : 'none';
+  for (let i=1;i<=8;i++){
+    document.getElementById('led'+i).disabled = (mode!=='manual');
+    document.getElementById('led'+i+'-num').disabled = (mode!=='manual');
+  }
+}
+applyModeUI(modeSelect.value);
+modeSelect.addEventListener('change', ()=>{
+  const mode = modeSelect.value;
+  saveToStorage('led_mode', mode);
+  applyModeUI(mode);
+  if (mode === 'auto') {
+    // immediately apply current slot when switch to auto
+    applyCurrentScheduleSlot(true);
+  }
+});
+
+/* batas suhu save */
+document.getElementById('setBatas').addEventListener('click', ()=>{
+  const val = parseFloat(document.getElementById('batasSuhu').value);
+  if (isNaN(val) || val < 30 || val > 90){ alert('Masukkan nilai antara 30–90 °C'); return; }
+  saveToStorage('batas_suhu', val);
+  document.getElementById('batas-info').innerText = 'Batas suhu saat ini: ' + val + ' °C';
+  client.publish('set/batasSuhu', String(val));
+});
+
+/* ========== Clock (auto container) ========== */
+function updateClock(){
+  const now = new Date();
+  const t = now.toLocaleTimeString('id-ID',{hour12:false});
+  document.getElementById('clock').textContent = t;
+}
+setInterval(updateClock, 1000);
 updateClock();
 
-// ====== Mode switch ======
-document.getElementById('mode').addEventListener('change',e=>{
-  const val=e.target.value;
-  document.getElementById('auto-container').style.display=(val==='auto')?'block':'none';
-  document.getElementById('led-controls').style.display=(val==='manual')?'block':'none';
-});
-
-// ====== MQTT Events ======
-client.on('connect',()=>{
-  statusText.innerHTML="✅ Terhubung ke broker MQTT";
-  statusText.style.color="#0f0";
-  for(let i=1;i<=8;i++)client.subscribe('led/'+i);
+/* ===========================
+   MQTT - connection & handlers
+   =========================== */
+const statusEl = document.getElementById('status');
+client.on('connect', ()=>{
+  statusEl.innerHTML = '✅ Terhubung ke broker MQTT';
+  statusEl.style.color = '#0f0';
+  // subscribe topics
+  for (let i=1;i<=8;i++) client.subscribe(`led/${i}`);
   client.subscribe('suhu/ntc1');
   client.subscribe('suhu/ntc2');
   client.subscribe('status/suhu');
   client.subscribe('status/batasSuhu');
+  // on connect, if mode is auto apply current slot
+  const mode = loadFromStorage('led_mode','manual');
+  if (mode === 'auto') applyCurrentScheduleSlot(true);
 });
+client.on('reconnect', ()=>{ statusEl.innerHTML = '♻️ Menghubungkan ulang...'; statusEl.style.color='#ff0'; });
+client.on('offline', ()=>{ statusEl.innerHTML = '❌ Terputus dari MQTT'; statusEl.style.color='#f00'; });
 
-let lastT1=0,lastT2=0;
-client.on('message',(topic,message)=>{
-  const msg=message.toString();
-  if(topic.startsWith('led/')){
-    const num=parseInt(topic.split('/')[1]);
-    const percent=Math.round(parseInt(msg)/255*100);
-    document.getElementById('led'+num).value=percent;
-    document.getElementById('led'+num+'-num').value=percent;
+client.on('message', (topic, message)=>{
+  const msg = message.toString();
+  if (topic.startsWith('led/')){
+    const num = parseInt(topic.split('/')[1]);
+    const percent = Math.round(parseInt(msg)/255*100);
+    const s = document.getElementById('led'+num);
+    const n = document.getElementById('led'+num+'-num');
+    if (s) s.value = percent;
+    if (n) n.value = percent;
+    // update local storage sliders (reflect actual levels)
+    const sliders = loadFromStorage('led_sliders', {});
+    sliders[num] = percent;
+    saveToStorage('led_sliders', sliders);
   }
-  if(topic==='suhu/ntc1'){lastT1=parseFloat(msg);updateTemp('temp1',msg);updateChart(lastT1,lastT2);}
-  if(topic==='suhu/ntc2'){lastT2=parseFloat(msg);updateTemp('temp2',msg);updateChart(lastT1,lastT2);}
-  if(topic==='status/suhu')updateAlert(msg);
-  if(topic==='status/batasSuhu')updateBatas(msg);
+  if (topic === 'suhu/ntc1'){ updateTemp('temp1', msg); updateChart(parseFloat(msg), null); }
+  if (topic === 'suhu/ntc2'){ updateTemp('temp2', msg); updateChart(null, parseFloat(msg)); }
+  if (topic === 'status/suhu') updateAlert(msg);
+  if (topic === 'status/batasSuhu') updateBatas(msg);
 });
 
-// ====== Chart.js ======
-const ctx=document.getElementById('tempChart').getContext('2d');
-const labels=[],data1=[],data2=[];
-const tempChart=new Chart(ctx,{
-  type:'line',
-  data:{labels:labels,datasets:[
-    {label:'Atas',data:data1,borderColor:'rgba(255,99,132,1)',tension:0.3,fill:false},
-    {label:'Bawah',data:data2,borderColor:'rgba(54,162,235,1)',tension:0.3,fill:false}
+/* ===========================
+   Chart (same as before)
+   =========================== */
+const ctx = document.getElementById('tempChart').getContext('2d');
+const labels = [], d1 = [], d2 = [];
+const tempChart = new Chart(ctx, {
+  type: 'line',
+  data: { labels, datasets:[
+    { label: 'Atas', data: d1, borderColor:'rgba(255,99,132,1)', tension:0.3, fill:false },
+    { label: 'Bawah', data: d2, borderColor:'rgba(54,162,235,1)', tension:0.3, fill:false }
   ]},
-  options:{scales:{y:{min:20,max:70}},plugins:{legend:{labels:{color:'#fff'}}}}
+  options: { scales: { y: { min:20, max:70 } }, plugins:{legend:{labels:{color:'#fff'}}} }
 });
-function updateChart(t1,t2){
-  const now=new Date().toLocaleTimeString();
-  labels.push(now);data1.push(t1);data2.push(t2);
-  if(labels.length>60){labels.shift();data1.shift();data2.shift();}
+function updateChart(a,b){
+  const now = new Date().toLocaleTimeString();
+  labels.push(now);
+  d1.push(a === null ? (d1.length ? d1[d1.length-1] : null) : a);
+  d2.push(b === null ? (d2.length ? d2[d2.length-1] : null) : b);
+  if (labels.length > 60){ labels.shift(); d1.shift(); d2.shift(); }
   tempChart.update();
 }
 
-// ====== Temp Functions ======
+/* ===========================
+   Helper: convert slot/time
+   =========================== */
+function getCurrentSlot(){
+  const now = new Date();
+  const h = now.getHours();
+  const m = now.getMinutes();
+  if (h < 7 || h > 16) return null;
+  // valid slots: 07:00 .. 16:00 and 07:30 .. 15:30 (16:30 not included previously)
+  // Our scheduleTimes contains 07:00..16:00 and 07:30..15:30 (since for h<16 we added :30)
+  const mm = (m < 30) ? '00' : '30';
+  const slot = `${String(h).padStart(2,'0')}:${mm}`;
+  // check if slot is in scheduleTimes; if it's 16:30 skip
+  return scheduleTimes.includes(slot) ? slot : null;
+}
+
+/* publish LED levels for a given slot (time like '07:30') */
+function publishSlot(slotTime){
+  const sched = loadFromStorage('led_schedule', {});
+  const arr = sched[slotTime] || Array(8).fill(0);
+  // publish each led topic led/1..led/8 with payload 0-255
+  for (let i=1;i<=8;i++){
+    const pct = arr[i-1] || 0;
+    const payload = String(Math.round(pct * 2.55));
+    client.publish(`led/${i}`, payload);
+  }
+  lastPublishedSlot = slotTime;
+  // also update local slider UI to reflect values (but keep them disabled if in auto)
+  for (let i=1;i<=8;i++){
+    const s = document.getElementById('led'+i);
+    const n = document.getElementById('led'+i+'-num');
+    if (s) s.value = arr[i-1];
+    if (n) n.value = arr[i-1];
+    // save sliders to storage (representing last commanded)
+    const sliders = loadFromStorage('led_sliders', {});
+    sliders[i] = arr[i-1];
+    saveToStorage('led_sliders', sliders);
+  }
+}
+
+/* Apply current slot if in auto mode. if force==true publish even if same slot as lastPublishedSlot */
+function applyCurrentScheduleSlot(force=false){
+  const mode = loadFromStorage('led_mode','manual');
+  if (mode !== 'auto') return;
+  const slot = getCurrentSlot();
+  if (!slot) return;
+  if (!force && slot === lastPublishedSlot) return;
+  publishSlot(slot);
+}
+
+/* startAuto button immediate apply */
+document.getElementById('startAuto').addEventListener('click', ()=>{
+  // apply current slot now
+  applyCurrentScheduleSlot(true);
+  client.publish('auto/start', '1');
+  alert('Perintah start otomatis dikirim dan jadwal saat ini diterapkan.');
+});
+
+/* periodic checker: check every 10s but only act when minute changed and is :00 or :30 */
+setInterval(()=>{
+  const now = new Date();
+  const minute = now.getMinutes();
+  if (minute === lastMinuteChecked) return;
+  lastMinuteChecked = minute;
+  // only check if minute == 0 or 30
+  if (minute % 30 !== 0) return;
+  // if mode auto then apply slot
+  const mode = loadFromStorage('led_mode','manual');
+  if (mode === 'auto') applyCurrentScheduleSlot(false);
+}, 10000);
+
+/* on load: ensure UI reflects saved mode and if auto then apply current slot */
+window.addEventListener('load', ()=>{
+  const savedModeNow = loadFromStorage('led_mode','manual');
+  modeSelect.value = savedModeNow;
+  applyModeUI(savedModeNow); // show/hide
+  // if auto -> apply current slot immediately
+  if (savedModeNow === 'auto') applyCurrentScheduleSlot(true);
+});
+
+/* small helpers used earlier but not yet defined in this scope - define now */
 function updateTemp(id,val){
   const t=parseFloat(val).toFixed(1);
   const el=document.getElementById(id);
-  el.textContent=t+' °C';
-  const card=el.parentElement;
-  if(t>=50)card.style.background='rgba(255,0,0,0.4)';
-  else if(t>=40)card.style.background='rgba(255,215,0,0.3)';
-  else card.style.background='rgba(255,255,255,0.15)';
+  if (el) el.textContent=t+' °C';
+  const card=el?el.parentElement:null;
+  if (card){
+    if (t>=50) card.style.background='rgba(255,0,0,0.4)';
+    else if (t>=40) card.style.background='rgba(255,215,0,0.3)';
+    else card.style.background='rgba(255,255,255,0.15)';
+  }
 }
 function updateAlert(msg){
   const box=document.getElementById('alert-box');
-  if(msg.startsWith('TINGGI')){
+  if (msg.startsWith('TINGGI')){
     const suhu=msg.split(':')[1];
     box.innerHTML=`⚠️ Suhu tinggi: ${suhu} °C<br>Semua LED dimatikan.`;
     box.style.display='block';
-  }else box.style.display='none';
+  } else box.style.display='none';
 }
 function updateBatas(val){
-  document.getElementById('batasSuhu').value=parseFloat(val).toFixed(1);
-  document.getElementById('batas-info').innerText='Batas suhu saat ini: '+val+' °C';
+  document.getElementById('batasSuhu').value = parseFloat(val).toFixed(1);
+  document.getElementById('batas-info').innerText = 'Batas suhu saat ini: ' + val + ' °C';
 }
 
-// ====== Manual Sliders ======
-for(let i=1;i<=8;i++){
-  const s=document.getElementById('led'+i);
-  const n=document.getElementById('led'+i+'-num');
-  s.addEventListener('input',()=>{
-    n.value=s.value;
-    client.publish('led/'+i,Math.round(s.value*2.55).toString());
-  });
-  n.addEventListener('change',()=>{
-    let v=parseInt(n.value);
-    if(isNaN(v))v=0;
-    v=Math.min(100,Math.max(0,v));
-    n.value=v;s.value=v;
-    client.publish('led/'+i,Math.round(v*2.55).toString());
-  });
+/* For compatibility: applyModeUI defined earlier as function used in load */
+function applyModeUI(mode){
+  document.getElementById('auto-container').style.display = (mode==='auto') ? 'block' : 'none';
+  document.getElementById('led-controls').style.display = (mode==='manual') ? 'block' : 'none';
+  for (let i=1;i<=8;i++){
+    const s = document.getElementById('led'+i);
+    const n = document.getElementById('led'+i+'-num');
+    if (s) s.disabled = (mode !== 'manual');
+    if (n) n.disabled = (mode !== 'manual');
+  }
 }
 
-// ====== Set Batas Suhu ======
-document.getElementById('setBatas').addEventListener('click',()=>{
-  const val=parseFloat(document.getElementById('batasSuhu').value);
-  if(val>=30&&val<=90){
-    client.publish('set/batasSuhu',val.toString());
-    alert('Batas suhu dikirim ke ESP32: '+val+' °C');
-  }else alert('Masukkan nilai antara 30–90 °C');
-});
-
-// ====== Start Otomatis ======
-document.getElementById('startAuto').addEventListener('click',()=>{
-  client.publish('auto/start','1');
-  alert('Mode otomatis dimulai!');
-});
+/* ensure schedule entries exist in storage for all times (initialize) */
+(function ensureScheduleInit(){
+  const sched = loadFromStorage('led_schedule', {});
+  let changed=false;
+  scheduleTimes.forEach(t=>{
+    if (!sched[t]) { sched[t] = Array(8).fill(0); changed=true; }
+  });
+  if (changed) saveToStorage('led_schedule', sched);
+})();
 </script>
 </body>
 </html>
