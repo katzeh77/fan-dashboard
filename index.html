@@ -3,12 +3,12 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>LED Aquarium Controller — Final</title>
+<title>LED Aquarium Controller</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
 <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <style>
-/* === Gaya persis versi "ok bagus" (tidak dirubah) + beberapa kecil untuk indikator === */
+/* STYLE: tetap mengikuti tampilan yang sebelumnya kamu setujui */
 *{box-sizing:border-box}
 body{
   margin:0;
@@ -22,162 +22,45 @@ body{
   padding:20px;
   color:#fff;
 }
-h1{
-  margin:10px 0 5px;
-  font-size:28px;
-  text-align:center;
-  text-shadow:2px 2px 6px rgba(0,0,0,0.7);
-}
-#status{
-  font-size:14px;
-  color:#0f0;
-  margin-bottom:10px;
-  text-shadow:1px 1px 3px rgba(0,0,0,0.5);
-}
+h1{ margin:10px 0 5px; font-size:28px; text-align:center; text-shadow:2px 2px 6px rgba(0,0,0,0.7); }
+#status{ font-size:14px; color:#0f0; margin-bottom:10px; text-shadow:1px 1px 3px rgba(0,0,0,0.5); }
 .dashboard{
   background:rgba(255,255,255,0.1);
   backdrop-filter:blur(15px);
   border-radius:20px;
-  padding:25px;
+  padding:20px;
   width:100%;
   max-width:460px;
   box-shadow:0 8px 24px rgba(0,0,0,0.4);
 }
-.temp-container{
-  display:flex;
-  justify-content:space-around;
-  margin-bottom:20px;
-  flex-wrap:wrap;
-}
+.temp-container{ display:flex; justify-content:space-around; margin-bottom:12px; flex-wrap:wrap; }
 .temp-card{
   background:rgba(255,255,255,0.15);
-  border-radius:12px;
-  padding:15px 20px;
-  text-align:center;
-  min-width:120px;
-  margin:5px;
-  box-shadow:0 4px 10px rgba(0,0,0,0.3);
-  transition:background 0.3s;
+  border-radius:12px; padding:12px 16px; text-align:center; min-width:110px; margin:5px;
+  box-shadow:0 4px 10px rgba(0,0,0,0.3); transition:background 0.3s;
 }
-.temp-value{
-  font-size:24px;
-  font-weight:600;
-  margin-top:5px;
-}
-.slider-container{margin:12px 0 6px 0;text-align:left}
-.slider-row{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
-.slider-left{flex:1 1 60%}
-.slider-right{width:80px;text-align:center}
-.slider-label{display:flex;align-items:center;gap:8px}
-input[type=range]{
-  -webkit-appearance:none;
-  width:100%;
-  height:12px;
-  border-radius:6px;
-  background:rgba(255,255,255,0.3);
-  outline:none;
-}
-input[type=range]::-webkit-slider-thumb{
-  -webkit-appearance:none;
-  width:24px;
-  height:24px;
-  border-radius:50%;
-  background:#fff;
-  border:2px solid #007bff;
-  cursor:pointer;
-}
-input[type=number]{
-  width:60px;
-  border:none;
-  border-radius:8px;
-  text-align:center;
-  padding:5px;
-  background:rgba(255,255,255,0.2);
-  color:#fff;
-}
-#alert-box{
-  display:none;
-  background:rgba(255,0,0,0.4);
-  padding:10px;
-  margin:10px 0;
-  border-radius:10px;
-  text-align:center;
-  font-weight:600;
-}
-#batas-container{
-  background:rgba(255,255,255,0.15);
-  border-radius:12px;
-  padding:15px;
-  margin-top:15px;
-  box-shadow:0 4px 10px rgba(0,0,0,0.3);
-}
-button{
-  background:#007bff;
-  color:#fff;
-  border:none;
-  border-radius:8px;
-  padding:6px 14px;
-  cursor:pointer;
-  font-weight:600;
-}
-button:hover{background:#3399ff}
-#chart-container{
-  margin-top:25px;
-  background:rgba(255,255,255,0.1);
-  padding:15px;
-  border-radius:15px;
-  box-shadow:0 4px 10px rgba(0,0,0,0.3);
-}
-/* Mode toggle */
-.mode-select{
-  margin-bottom:12px;
-  text-align:center;
-}
-#auto-container{
-  background:rgba(255,255,255,0.15);
-  border-radius:12px;
-  padding:12px;
-  margin-top:12px;
-  display:none;
-  box-shadow:0 4px 10px rgba(0,0,0,0.3);
-  max-height:320px;
-  overflow:auto;
-}
-#clock{
-  text-align:center;
-  font-size:18px;
-  font-weight:600;
-  margin-bottom:10px;
-  text-shadow:1px 1px 2px rgba(0,0,0,0.6);
-}
-.schedule-table{
-  width:100%;
-  border-collapse:collapse;
-  color:#fff;
-  font-size:13px;
-}
-.schedule-table th,.schedule-table td{
-  border-bottom:1px solid rgba(255,255,255,0.2);
-  padding:6px 6px;
-  text-align:center;
-}
-.indicator {
-  width:12px; height:12px; border-radius:50%; display:inline-block;
-  box-shadow:0 0 4px rgba(0,0,0,0.6);
-  border:2px solid rgba(255,255,255,0.15);
-}
-.ind-off { background:rgba(200,200,200,0.2); }
-.ind-on { background:#00ff7f; } /* green when active */
-.ind-warn { background:#ffd24d; } /* yellow for low */
-.small-note{font-size:12px;color:#ddd;margin-top:6px}
-
-/* small responsive tweaks */
+.temp-value{ font-size:22px; font-weight:600; margin-top:6px; }
+.slider-container{ margin:12px 0; text-align:left; }
+.slider-container label{ display:block; font-size:15px; font-weight:600; margin-bottom:6px; color:#fff; text-shadow:1px 1px 2px rgba(0,0,0,0.6); }
+input[type=range]{ -webkit-appearance:none; width:100%; height:12px; border-radius:6px; background:rgba(255,255,255,0.3); outline:none; }
+input[type=range]::-webkit-slider-thumb{ -webkit-appearance:none; width:22px; height:22px; border-radius:50%; background:#fff; border:2px solid #007bff; cursor:pointer; }
+input[type=number]{ width:60px; border:none; border-radius:8px; text-align:center; padding:6px; background:rgba(255,255,255,0.2); color:#fff; }
+#alert-box{ display:none; background:rgba(255,0,0,0.4); padding:10px; margin:8px 0; border-radius:10px; text-align:center; font-weight:600; }
+#batas-container{ background:rgba(255,255,255,0.15); border-radius:12px; padding:12px; margin-top:10px; box-shadow:0 4px 10px rgba(0,0,0,0.3); }
+button{ background:#007bff; color:#fff; border:none; border-radius:8px; padding:6px 14px; cursor:pointer; font-weight:600; }
+button:hover{ background:#3399ff }
+#chart-container{ margin-top:14px; background:rgba(255,255,255,0.1); padding:12px; border-radius:12px; box-shadow:0 4px 10px rgba(0,0,0,0.3); }
+.mode-select{ margin-bottom:10px; text-align:center; }
+#auto-container{ background:rgba(255,255,255,0.12); border-radius:12px; padding:12px; margin-top:12px; display:none; box-shadow:0 4px 10px rgba(0,0,0,0.3); max-height:300px; overflow:auto; }
+#clock{ text-align:center; font-size:18px; font-weight:600; margin-bottom:8px; text-shadow:1px 1px 2px rgba(0,0,0,0.6); }
+.schedule-table{ width:100%; border-collapse:collapse; color:#fff; font-size:14px; white-space:nowrap; }
+.schedule-table th,.schedule-table td{ border-bottom:1px solid rgba(255,255,255,0.18); padding:6px; text-align:center; }
+.save-row{ display:flex; gap:8px; margin-top:8px; }
 @media (max-width:768px){
-  body{padding:10px;font-size:14px}
-  .dashboard{width:100%;padding:15px}
-  .schedule-table{font-size:12px}
-  input[type=range]{width:90%}
-  canvas{width:100%!important;height:auto!important}
+  .dashboard{width:100%; padding:16px}
+  .schedule-table{ font-size:12px }
+  input[type=range]{ width:90% }
+  canvas{ width:100%!important; height:auto!important }
 }
 </style>
 </head>
@@ -187,12 +70,11 @@ button:hover{background:#3399ff}
 
 <div class="dashboard">
   <div class="mode-select">
-    <label style="font-weight:600">Pilih Mode: </label>
-    <select id="modeSelect" style="margin-left:8px;padding:6px;border-radius:8px;">
+    <label for="modeSelect" style="font-weight:600;">Mode:</label>
+    <select id="modeSelect">
       <option value="manual">Manual</option>
       <option value="auto">Otomatis</option>
     </select>
-    <div class="small-note" id="modeNote">Mode tersimpan: —</div>
   </div>
 
   <div class="temp-container">
@@ -202,28 +84,23 @@ button:hover{background:#3399ff}
 
   <div id="alert-box"></div>
 
-  <!-- manual sliders (ke-8) -->
   <div id="led-controls"></div>
 
-  <!-- auto area (clock + schedule table + buttons) -->
-  <div id="auto-container" aria-live="polite">
+  <div id="auto-container">
     <div id="clock">--:--:--</div>
-    <h3 style="text-align:center;margin-bottom:8px;">Jadwal Intensitas Otomatis</h3>
+    <h3 style="text-align:center;margin-bottom:8px;">Jadwal Intensitas Otomatis (07:00–16:00)</h3>
     <div style="overflow-x:auto;">
-      <table class="schedule-table" id="scheduleTable" aria-label="Jadwal Otomatis">
+      <table class="schedule-table" id="scheduleTable">
         <thead>
-          <tr>
-            <th>Waktu</th>
-            <th>Royal Blue</th><th>Blue</th><th>Violet</th><th>Red</th>
-            <th>Green</th><th>White</th><th>Sump</th><th>Fan</th>
-          </tr>
+          <tr><th>Waktu</th><th>RB</th><th>B</th><th>V</th><th>R</th><th>G</th><th>W</th><th>S</th><th>F</th></tr>
         </thead>
-        <tbody id="schedule-body"></tbody>
+        <tbody id="scheduleBody"></tbody>
       </table>
     </div>
-    <div style="display:flex;gap:8px;margin-top:10px;">
-      <button id="startAuto" style="flex:1">▶️ Start Otomatis</button>
-      <button id="saveAll" style="flex:1;background:#22a6b3">💾 Simpan Semua</button>
+
+    <div class="save-row">
+      <button id="saveSchedule" style="flex:1;">Save Schedule (local + esp)</button>
+      <button id="startAuto" style="flex:1;">▶️ Start Otomatis</button>
     </div>
   </div>
 
@@ -235,411 +112,246 @@ button:hover{background:#3399ff}
   </div>
 
   <div id="chart-container">
-    <h3 style="text-align:center;margin-bottom:10px;">Grafik Suhu Real-Time</h3>
-    <canvas id="tempChart" width="400" height="200"></canvas>
+    <h3 style="text-align:center;margin-bottom:8px;">Grafik Suhu Real-Time</h3>
+    <canvas id="tempChart" width="400" height="180"></canvas>
   </div>
 </div>
 
 <script>
-/* =======================
-   CONFIG & STATE
-   ======================= */
-const MQTT_BROKER = 'wss://broker.emqx.io:8084/mqtt'; // ganti kalau perlu
-const client = mqtt.connect(MQTT_BROKER);
+/* ========== Konfigurasi MQTT ========== */
+const brokerUrl = 'wss://broker.emqx.io:8084/mqtt'; // ganti jika perlu
+const client = mqtt.connect(brokerUrl, { clientId: 'dash_' + Math.random().toString(16).substr(2,8), clean: true });
 const ledNames = ["Royal Blue","Blue","Violet","Red","Green","White","Sump","Fan"];
-
-// build scheduleTimes 07:00..16:00 step 30m => 19 slots
-const scheduleTimes = [];
-for (let h=7; h<=16; h++){
-  scheduleTimes.push(`${String(h).padStart(2,'0')}:00`);
-  if (h < 16) scheduleTimes.push(`${String(h).padStart(2,'0')}:30`);
+const scheduleSlots = []; // will hold 'HH:MM' strings
+for(let h=7; h<=16; h++){
+  scheduleSlots.push(`${String(h).padStart(2,'0')}:00`);
+  if(h<16) scheduleSlots.push(`${String(h).padStart(2,'0')}:30`);
 }
+const SLOT_COUNT = scheduleSlots.length; // 20
 
-/* storage keys */
-const KEY_SCHEDULE = 'led_schedule';
-const KEY_MODE = 'led_mode';
-const KEY_SLIDERS = 'led_sliders';
-const KEY_BATAS = 'batas_suhu';
-
-/* helpers localStorage */
-function saveToStorage(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){console.warn(e);} }
-function loadFromStorage(k, def){ try{ const s = localStorage.getItem(k); return s?JSON.parse(s):def; }catch(e){return def;} }
-
-/* =======================
-   UI BUILD
-   ======================= */
-/* sliders */
+/* ========== Build UI (manual sliders + schedule table) ========== */
 const ledControls = document.getElementById('led-controls');
 ledNames.forEach((name, i) => {
-  const idx = i + 1;
+  const idx = i+1;
   const div = document.createElement('div');
   div.className = 'slider-container';
-  div.innerHTML = `
-    <div class="slider-row">
-      <div class="slider-label slider-left">
-        <span style="min-width:140px;display:inline-block;font-weight:600">${name}</span>
-        <span id="ind-${idx}" class="indicator ind-off" title="Status LED ${idx}" style="margin-left:6px;"></span>
-      </div>
-      <div class="slider-right">
-        <input id="led${idx}-num" type="number" min="0" max="100" value="0">%
-      </div>
-    </div>
-    <div style="margin-top:8px;"><input id="led${idx}" type="range" min="0" max="100" value="0"></div>
-  `;
+  div.innerHTML = `<label>${name} <input type="number" id="led${idx}-num" min="0" max="100" value="0">%</label>
+                   <input type="range" id="led${idx}" min="0" max="100" value="0">`;
   ledControls.appendChild(div);
 });
 
-/* schedule table */
-const scheduleBody = document.getElementById('schedule-body');
-scheduleTimes.forEach(time => {
-  const token = time.replace(':','-');
+// schedule table
+const scheduleBody = document.getElementById('scheduleBody');
+for (const t of scheduleSlots) {
   const tr = document.createElement('tr');
-  let html = `<td style="font-weight:600">${time}</td>`;
-  for (let i=1;i<=8;i++){
-    html += `<td><input id="auto-${token}-${i}" type="number" min="0" max="100" value="0" style="width:64px;text-align:center;background:rgba(255,255,255,0.06);border-radius:6px;color:#fff;border:1px solid rgba(255,255,255,0.06);"></td>`;
+  let html = `<td>${t}</td>`;
+  for (let c=1;c<=8;c++){
+    html += `<td><input data-time="${t}" data-led="${c}" class="sched-inp" type="number" min="0" max="100" value="0" style="width:60px;text-align:center;"></td>`;
   }
   tr.innerHTML = html;
   scheduleBody.appendChild(tr);
-});
-
-/* =======================
-   Load saved state
-   ======================= */
-const savedSchedule = loadFromStorage(KEY_SCHEDULE, {});
-const savedMode = loadFromStorage(KEY_MODE, 'manual');
-const savedSliders = loadFromStorage(KEY_SLIDERS, {});
-const savedBatas = loadFromStorage(KEY_BATAS, null);
-
-/* apply saved batas */
-if (savedBatas !== null){
-  document.getElementById('batasSuhu').value = savedBatas;
-  document.getElementById('batas-info').innerText = 'Batas suhu saat ini: ' + savedBatas + ' °C';
 }
 
-/* apply saved sliders */
-for (let i=1;i<=8;i++){
-  const s = document.getElementById('led'+i);
-  const n = document.getElementById('led'+i+'-num');
-  const val = (savedSliders[i] !== undefined) ? savedSliders[i] : 0;
-  if (s) s.value = val;
-  if (n) n.value = val;
+/* ========== LocalStorage keys ========== */
+const LS_SCHEDULE = 'aquarium_schedule_v1';
+const LS_MODE = 'aquarium_mode_v1';
+const LS_BATAS = 'aquarium_batas_v1';
+
+/* ========== Utilities ========== */
+function slotIndexFromTimeLabel(label){ return scheduleSlots.indexOf(label); } // 0..19
+function toPayloadPercent(uiVal){ return Math.round(uiVal * 2.55); } // 0-100 -> 0-255
+
+/* ========== Clock in auto container ========== */
+function updateClock(){
+  const now = new Date();
+  const t = now.toLocaleTimeString('id-ID',{hour12:false});
+  document.getElementById('clock').textContent = t;
 }
+setInterval(updateClock, 1000);
+updateClock();
 
-/* populate schedule table from savedSchedule */
-scheduleTimes.forEach(time => {
-  const token = time.replace(':','-');
-  const arr = savedSchedule[time] || Array(8).fill(0);
-  for (let i=1;i<=8;i++){
-    const inp = document.getElementById(`auto-${token}-${i}`);
-    if (inp) inp.value = arr[i-1];
-  }
-});
-
-/* === set mode UI from saved === */
-const modeSelect = document.getElementById('modeSelect');
-modeSelect.value = savedMode;
-document.getElementById('modeNote').textContent = `Mode tersimpan: ${savedMode.toUpperCase()}`;
-
-/* =======================
-   MQTT connection & handlers
-   ======================= */
-const statusEl = document.getElementById('status');
-client.on('connect', () => {
-  statusEl.innerHTML = '✅ Terhubung ke broker MQTT';
-  statusEl.style.color = '#0f0';
-  // subscribe
-  for (let i=1;i<=8;i++) client.subscribe(`led/${i}`);
-  client.subscribe('suhu/ntc1');
-  client.subscribe('suhu/ntc2');
-  client.subscribe('status/suhu');
-  client.subscribe('status/batasSuhu');
-  client.subscribe('mode/status');
-  // if mode is auto, apply current slot
-  if (loadFromStorage(KEY_MODE,'manual') === 'auto') applyCurrentScheduleSlot(true);
-});
-client.on('reconnect', ()=>{ statusEl.innerHTML='♻️ Menghubungkan ulang...'; statusEl.style.color='#ff0'; });
-client.on('offline', ()=>{ statusEl.innerHTML='❌ Terputus dari MQTT'; statusEl.style.color='#f00'; });
-
-client.on('message', (topic, message) => {
-  const msg = message.toString();
-  if (topic.startsWith('led/')) {
-    const num = parseInt(topic.split('/')[1]);
-    const percent = Math.round(parseInt(msg) / 255 * 100);
-    const s = document.getElementById('led'+num);
-    const n = document.getElementById('led'+num+'-num');
-    if (s) s.value = percent;
-    if (n) n.value = percent;
-    // indicator: if >0 green else off
-    const ind = document.getElementById(`ind-${num}`);
-    if (ind) ind.className = 'indicator ' + (percent > 0 ? 'ind-on' : 'ind-off');
-    // save slider state
-    const sliders = loadFromStorage(KEY_SLIDERS, {});
-    sliders[num] = percent;
-    saveToStorage(KEY_SLIDERS, sliders);
-  }
-  if (topic === 'suhu/ntc1') { updateTemp('temp1', msg); updateChart(parseFloat(msg), null); }
-  if (topic === 'suhu/ntc2') { updateTemp('temp2', msg); updateChart(null, parseFloat(msg)); }
-  if (topic === 'status/suhu') updateAlert(msg);
-  if (topic === 'status/batasSuhu') updateBatas(msg);
-  if (topic === 'mode/status') {
-    // optional: if ESP reports mode status
-    document.getElementById('modeNote').textContent = `Mode ESP: ${msg}`;
-  }
-});
-
-/* =======================
-   Chart
-   ======================= */
+/* ========== Chart setup (Chart.js) ========== */
 const ctx = document.getElementById('tempChart').getContext('2d');
-const labels = [], d1 = [], d2 = [];
+const labels = [], data1 = [], data2 = [];
 const tempChart = new Chart(ctx, {
   type: 'line',
-  data: {
-    labels,
-    datasets: [
-      { label: 'Atas', data: d1, borderColor: 'rgba(255,99,132,1)', tension:0.3, fill:false },
-      { label: 'Bawah', data: d2, borderColor: 'rgba(54,162,235,1)', tension:0.3, fill:false }
-    ]
-  },
-  options: { scales: { y: { min: 20, max: 70 } }, plugins:{legend:{labels:{color:'#fff'}}} }
+  data: { labels, datasets: [
+    { label:'Atas', data: data1, borderColor: 'rgba(255,99,132,1)', tension:0.3, fill:false },
+    { label:'Bawah', data: data2, borderColor: 'rgba(54,162,235,1)', tension:0.3, fill:false }
+  ]},
+  options: { scales:{ y:{ min: 15, max: 80 } }, plugins:{legend:{labels:{color:'#fff'}}} }
 });
-function updateChart(a,b){
+function pushChart(a,b){
   const now = new Date().toLocaleTimeString();
-  labels.push(now);
-  d1.push(a === null ? (d1.length ? d1[d1.length-1] : null) : a);
-  d2.push(b === null ? (d2.length ? d2[d2.length-1] : null) : b);
-  if (labels.length > 60){ labels.shift(); d1.shift(); d2.shift(); }
+  labels.push(now); data1.push(a); data2.push(b);
+  if(labels.length>60){ labels.shift(); data1.shift(); data2.shift(); }
   tempChart.update();
 }
 
-/* =======================
-   UI & Storage interactions
-   ======================= */
-/* schedule cell change -> save local + publish auto/set/<time>/<led> */
-scheduleTimes.forEach(time => {
-  const token = time.replace(':','-');
-  for (let i=1;i<=8;i++){
-    const inp = document.getElementById(`auto-${token}-${i}`);
-    if (!inp) continue;
-    inp.addEventListener('change', () => {
-      let v = parseInt(inp.value); if (isNaN(v)) v = 0; v = Math.max(0, Math.min(100, v));
-      inp.value = v;
-      const sched = loadFromStorage(KEY_SCHEDULE, {});
-      if (!sched[time]) sched[time] = Array(8).fill(0);
-      sched[time][i-1] = v;
-      saveToStorage(KEY_SCHEDULE, sched);
-      // publish per-cell
-      const payload = Math.round(v * 2.55);
-      if (client.connected) client.publish(`auto/set/${time}/${i}`, String(payload));
-    });
+/* ========== MQTT events ========== */
+client.on('connect', ()=> {
+  document.getElementById('status').innerText = '✅ Terhubung ke broker MQTT';
+  document.getElementById('status').style.color = '#0f0';
+  // subscribe essential topics
+  for(let i=1;i<=8;i++) client.subscribe('led/'+i);
+  client.subscribe('suhu/ntc1'); client.subscribe('suhu/ntc2');
+  client.subscribe('status/suhu'); client.subscribe('status/batasSuhu');
+  client.subscribe('auto/ack'); // optional ack topic
+  // after connect, send local schedule & mode to ESP so it has latest copy
+  loadLocalAndSyncToESP();
+});
+client.on('reconnect', ()=>{ document.getElementById('status').innerText = '♻️ Menghubungkan ulang...'; document.getElementById('status').style.color='#ff0'; });
+client.on('offline', ()=>{ document.getElementById('status').innerText = '❌ Terputus dari MQTT'; document.getElementById('status').style.color='#f00'; });
+
+client.on('message', (topic, message) => {
+  const msg = message.toString();
+  if(topic.startsWith('led/')){
+    const idx = parseInt(topic.split('/')[1]);
+    const perc = Math.round(parseInt(msg)/255*100);
+    const s = document.getElementById('led'+idx);
+    const n = document.getElementById('led'+idx+'-num');
+    if(s) s.value = perc;
+    if(n) n.value = perc;
+  }
+  if(topic === 'suhu/ntc1'){ pushChart(parseFloat(msg), null); document.getElementById('temp1').innerText = parseFloat(msg).toFixed(1)+' °C'; }
+  if(topic === 'suhu/ntc2'){ pushChart(null, parseFloat(msg)); document.getElementById('temp2').innerText = parseFloat(msg).toFixed(1)+' °C'; }
+  if(topic === 'status/suhu'){ // show alert if TINGGI
+    const box = document.getElementById('alert-box');
+    if(msg.startsWith('TINGGI')){ box.style.display='block'; box.innerHTML = `⚠️ ${msg}`; }
+    else box.style.display='none';
+  }
+  if(topic === 'status/batasSuhu'){
+    document.getElementById('batasSuhu').value = parseFloat(msg).toFixed(1);
+    document.getElementById('batas-info').innerText = 'Batas suhu saat ini: '+msg+' °C';
   }
 });
 
-/* sliders: save on change; publish only in manual mode */
-for (let i=1;i<=8;i++){
+/* ========== Manual slider handlers (publish only in manual mode) ========== */
+for(let i=1;i<=8;i++){
   const s = document.getElementById('led'+i);
   const n = document.getElementById('led'+i+'-num');
-  if (!s || !n) continue;
-  s.addEventListener('input', ()=>{
-    n.value = s.value;
-    const sliders = loadFromStorage(KEY_SLIDERS, {});
-    sliders[i] = parseInt(s.value);
-    saveToStorage(KEY_SLIDERS, sliders);
-    const mode = loadFromStorage(KEY_MODE, 'manual');
-    if (mode === 'manual' && client.connected) client.publish(`led/${i}`, String(Math.round(s.value * 2.55)));
-  });
+  s.addEventListener('input', ()=>{ n.value = s.value; if(modeIsManual()){ client.publish('led/'+i, String(toPayloadPercent(s.value))); }});
   n.addEventListener('change', ()=>{
-    let v = parseInt(n.value); if (isNaN(v)) v=0; v = Math.max(0, Math.min(100, v));
+    let v = parseInt(n.value); if(isNaN(v)) v = 0; v = Math.max(0, Math.min(100, v));
     n.value = v; s.value = v;
-    const sliders = loadFromStorage(KEY_SLIDERS, {});
-    sliders[i] = parseInt(v);
-    saveToStorage(KEY_SLIDERS, sliders);
-    const mode = loadFromStorage(KEY_MODE, 'manual');
-    if (mode === 'manual' && client.connected) client.publish(`led/${i}`, String(Math.round(v * 2.55)));
+    if(modeIsManual()) client.publish('led/'+i, String(toPayloadPercent(v)));
   });
 }
+function modeIsManual(){ return document.getElementById('modeSelect').value === 'manual'; }
 
-/* mode select */
-function applyModeUI(mode){
-  document.getElementById('auto-container').style.display = (mode==='auto') ? 'block' : 'none';
-  document.getElementById('led-controls').style.display = (mode==='manual') ? 'block' : 'none';
-  for (let i=1;i<=8;i++){
-    const s = document.getElementById('led'+i);
-    const n = document.getElementById('led'+i+'-num');
-    if (s) s.disabled = (mode !== 'manual');
-    if (n) n.disabled = (mode !== 'manual');
-  }
-  document.getElementById('modeNote').textContent = `Mode tersimpan: ${mode.toUpperCase()}`;
-}
-applyModeUI(modeSelect.value);
-modeSelect.addEventListener('change', ()=>{
-  const mode = modeSelect.value;
-  saveToStorage(KEY_MODE, mode);
-  applyModeUI(mode);
-  // if switching to auto, apply current slot immediately
-  if (mode === 'auto') {
-    applyCurrentScheduleSlot(true);
-    if (client.connected) client.publish('mode/set','auto');
-  } else {
-    if (client.connected) client.publish('mode/set','manual');
-  }
-});
-
-/* batas suhu */
-document.getElementById('setBatas').addEventListener('click', ()=>{
+/* ========== Batas suhu set ========= */
+document.getElementById('setBatas').addEventListener('click', ()=> {
   const val = parseFloat(document.getElementById('batasSuhu').value);
-  if (isNaN(val) || val < 30 || val > 90){ alert('Masukkan nilai antara 30–90 °C'); return; }
-  saveToStorage(KEY_BATAS, val);
-  document.getElementById('batas-info').innerText = 'Batas suhu saat ini: ' + val + ' °C';
-  if (client.connected) client.publish('set/batasSuhu', String(val));
+  if(isNaN(val) || val < 30 || val > 90){ alert('Masukkan nilai 30–90 °C'); return; }
+  client.publish('set/batasSuhu', String(val));
+  // also persist locally
+  localStorage.setItem(LS_BATAS, String(val));
+  alert('Batas suhu dikirim dan disimpan (lokal).');
 });
 
-/* Save All button (batch send all schedule cells) */
-document.getElementById('saveAll').addEventListener('click', ()=>{
-  const sched = {};
-  scheduleTimes.forEach(time => {
-    const token = time.replace(':','-');
-    const arr = [];
-    for (let i=1;i<=8;i++){
-      const inp = document.getElementById(`auto-${token}-${i}`);
-      const v = inp ? Math.max(0, Math.min(100, parseInt(inp.value) || 0)) : 0;
-      arr.push(v);
-      // publish each cell
-      if (client.connected) client.publish(`auto/set/${time}/${i}`, String(Math.round(v * 2.55)));
-    }
-    sched[time] = arr;
+/* ========== Schedule edit handlers (save locally on change) ========== */
+document.querySelectorAll('.sched-inp').forEach(inp=>{
+  inp.addEventListener('change', ()=>{
+    let v = parseInt(inp.value); if(isNaN(v)) v = 0; v = Math.max(0,Math.min(100,v)); inp.value = v;
+    saveScheduleToLocal(); // save local quickly
   });
-  saveToStorage(KEY_SCHEDULE, sched);
-  alert('Semua jadwal disimpan dan dikirim ke ESP (auto/set/*).');
 });
 
-/* Start Auto button */
+/* ========== Save Schedule (local + send to ESP to save EEPROM) ========== */
+document.getElementById('saveSchedule').addEventListener('click', ()=>{
+  saveScheduleToLocal();
+  // publish all cells to ESP using auto/set/<HH:MM>/<led> then auto/save
+  publishFullScheduleToESP();
+  alert('Jadwal dikirim ke ESP dan disimpan (EEPROM) — tunggu beberapa detik.');
+});
+
+/* ========== Start Auto ========== */
 document.getElementById('startAuto').addEventListener('click', ()=>{
-  applyCurrentScheduleSlot(true);
-  if (client.connected) client.publish('auto/start','1');
-  alert('Mode otomatis dimulai dan jadwal saat ini diterapkan.');
+  client.publish('auto/start', '1');
+  alert('Perintah Start Otomatis dikirim.');
 });
 
-/* Sync time button (optional) - publish ISO timestamp */
-(function addSyncTimeBtn(){
-  const btn = document.createElement('button');
-  btn.textContent = '⏲️ Sync Time';
-  btn.style.marginTop = '8px';
-  btn.addEventListener('click', ()=>{
-    const nowISO = new Date().toISOString();
-    if (client.connected) {
-      client.publish('time/set', nowISO);
-      alert('Waktu dikirim ke ESP: ' + nowISO);
-    } else alert('MQTT tidak terhubung.');
+/* ========== Publish entire schedule to ESP (auto/set per cell) ========== */
+function publishFullScheduleToESP(){
+  // gather table inputs
+  const all = [];
+  const inputs = document.querySelectorAll('.sched-inp');
+  inputs.forEach(inp => {
+    const t = inp.getAttribute('data-time');
+    const led = inp.getAttribute('data-led');
+    const v = parseInt(inp.value) || 0;
+    const payload = toPayloadPercent(v);
+    client.publish(`auto/set/${t}/${led}`, String(payload));
   });
-  document.getElementById('auto-container').appendChild(btn);
-})();
-
-/* =======================
-   Schedule apply logic
-   ======================= */
-let lastPublishedSlot = null;
-let lastMinuteChecked = null;
-
-/* helper: get current slot as HH:MM string (rounded to 00 or 30) */
-function getCurrentSlot(){
-  const now = new Date();
-  const h = now.getHours();
-  const m = now.getMinutes();
-  if (h < 7 || h > 16) return null;
-  const mm = (m < 30) ? '00' : '30';
-  const slot = `${String(h).padStart(2,'0')}:${mm}`;
-  return scheduleTimes.includes(slot) ? slot : null;
+  // after sending all cells, tell ESP to persist
+  setTimeout(()=> client.publish('auto/save', '1'), 200); // small delay to allow messages to reach
 }
 
-/* publish slot values to led/1..led/8 */
-function publishSlot(slotTime){
-  const sched = loadFromStorage(KEY_SCHEDULE, {});
-  const arr = sched[slotTime] || Array(8).fill(0);
-  for (let i=1;i<=8;i++){
-    const pct = arr[i-1] || 0;
-    const payload = String(Math.round(pct * 2.55));
-    if (client.connected) client.publish(`led/${i}`, payload);
+/* ========== Local storage: save/load schedule & mode & batas ========= */
+function saveScheduleToLocal(){
+  const obj = { slots: {} };
+  document.querySelectorAll('.sched-inp').forEach(inp=>{
+    const t = inp.getAttribute('data-time');
+    const led = inp.getAttribute('data-led');
+    obj.slots[t] = obj.slots[t] || {};
+    obj.slots[t][led] = parseInt(inp.value) || 0;
+  });
+  localStorage.setItem(LS_SCHEDULE, JSON.stringify(obj));
+}
+function loadScheduleFromLocal(){
+  const raw = localStorage.getItem(LS_SCHEDULE);
+  if(!raw) return false;
+  try{
+    const obj = JSON.parse(raw);
+    document.querySelectorAll('.sched-inp').forEach(inp=>{
+      const t = inp.getAttribute('data-time');
+      const led = inp.getAttribute('data-led');
+      if(obj.slots && obj.slots[t] && typeof obj.slots[t][led] !== 'undefined'){
+        inp.value = obj.slots[t][led];
+      }
+    });
+    return true;
+  }catch(e){ console.warn('Load schedule local failed', e); return false; }
+}
+function saveModeToLocal(){ localStorage.setItem(LS_MODE, document.getElementById('modeSelect').value); }
+function loadModeFromLocal(){ const m = localStorage.getItem(LS_MODE); if(m) document.getElementById('modeSelect').value = m; }
+
+/* ========== On startup: load local schedule & mode & batas and sync to ESP ====== */
+function loadLocalAndSyncToESP(){
+  loadModeFromLocal();
+  document.getElementById('modeSelect').dispatchEvent(new Event('change'));
+  const had = loadScheduleFromLocal();
+  const batas = localStorage.getItem(LS_BATAS);
+  if(batas) document.getElementById('batasSuhu').value = batas;
+  // if had schedule, publish to ESP so it has copy
+  if(had){
+    setTimeout(()=> publishFullScheduleToESP(), 500);
   }
-  // update UI sliders to reflect commanded values (and storage)
-  const sliders = loadFromStorage(KEY_SLIDERS, {});
-  for (let i=1;i<=8;i++){
-    const v = arr[i-1] || 0;
-    const s = document.getElementById('led'+i);
-    const n = document.getElementById('led'+i+'-num');
-    if (s) s.value = v;
-    if (n) n.value = v;
-    sliders[i] = v;
+}
+
+/* ========== Mode select toggling UI (auto container visible always per request? we keep shown but sliders disabled in auto) ========== */
+document.getElementById('modeSelect').addEventListener('change', ()=>{
+  const isAuto = document.getElementById('modeSelect').value === 'auto';
+  // show auto container (you asked always visible earlier; but we still show/hide to focus)
+  // We'll keep shown but disable manual sliders if auto
+  for(let i=1;i<=8;i++){
+    document.getElementById('led'+i).disabled = isAuto;
+    document.getElementById('led'+i+'-num').disabled = isAuto;
   }
-  saveToStorage(KEY_SLIDERS, sliders);
-  lastPublishedSlot = slotTime;
-}
-
-/* apply current slot if in auto mode (force=true to override lastPublishedSlot) */
-function applyCurrentScheduleSlot(force=false){
-  const mode = loadFromStorage(KEY_MODE,'manual');
-  if (mode !== 'auto') return;
-  const slot = getCurrentSlot();
-  if (!slot) return;
-  if (!force && slot === lastPublishedSlot) return;
-  publishSlot(slot);
-}
-
-/* periodic checker - run every 10 seconds, but act only when minute changes and minute %30 ==0 */
-setInterval(()=>{
-  const now = new Date();
-  const minute = now.getMinutes();
-  if (minute === lastMinuteChecked) return;
-  lastMinuteChecked = minute;
-  if (minute % 30 !== 0) return;
-  const mode = loadFromStorage(KEY_MODE,'manual');
-  if (mode === 'auto') applyCurrentScheduleSlot(false);
-}, 10000);
-
-/* on load apply mode & if auto apply current slot immediately */
-window.addEventListener('load', ()=>{
-  const m = loadFromStorage(KEY_MODE,'manual');
-  modeSelect.value = m;
-  applyModeUI(m);
-  if (m === 'auto') applyCurrentScheduleSlot(true);
+  saveModeToLocal();
 });
 
-/* =======================
-   Utility UI functions (duplicated small ones)
-   ======================= */
-function updateTemp(id,val){
-  if (!val && val !== 0) return;
-  const t = parseFloat(val).toFixed(1);
-  const el = document.getElementById(id);
-  if (el) el.textContent = t + ' °C';
-  const card = el ? el.parentElement : null;
-  if (card){
-    if (t >= 50) card.style.background = 'rgba(255,0,0,0.4)';
-    else if (t >= 40) card.style.background = 'rgba(255,215,0,0.3)';
-    else card.style.background = 'rgba(255,255,255,0.15)';
-  }
-}
-function updateAlert(msg){
-  const box = document.getElementById('alert-box');
-  if (msg && msg.startsWith('TINGGI')) {
-    const suhu = msg.split(':')[1] || '';
-    box.innerHTML = `⚠️ Suhu tinggi: ${suhu} °C<br>Semua LED dimatikan.`;
-    box.style.display = 'block';
-  } else box.style.display = 'none';
-}
-function updateBatas(val){
-  if (val === undefined || val === null) return;
-  document.getElementById('batasSuhu').value = parseFloat(val).toFixed(1);
-  document.getElementById('batas-info').innerText = 'Batas suhu saat ini: ' + val + ' °C';
-}
+/* ========== Helper: load last saved state on page load ====== */
+document.addEventListener('DOMContentLoaded', ()=>{
+  loadLocalAndSyncToESP();
+});
 
-/* ensure schedule keys exist in storage */
-(function ensureScheduleInit(){
-  const sched = loadFromStorage(KEY_SCHEDULE, {});
-  let changed = false;
-  scheduleTimes.forEach(t => { if (!sched[t]) { sched[t] = Array(8).fill(0); changed = true; } });
-  if (changed) saveToStorage(KEY_SCHEDULE, sched);
-})();
+/* ========== For demo: pushChart with simulated values when no MQTT ====
+   (you can remove this block if real MQTT provides suhu values) */
+setInterval(()=>{
+  // only push if no real data recently
+  if(labels.length < 2){ pushChart(26 + Math.random(), 25 + Math.random()); }
+}, 5000);
 </script>
 </body>
 </html>
