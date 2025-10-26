@@ -8,7 +8,7 @@
 <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <style>
-/* STYLE: tetap mengikuti tampilan yang sebelumnya kamu setujui */
+/* STYLE: ikuti versi "ok bagus" yang kamu setujui */
 *{box-sizing:border-box}
 body{
   margin:0;
@@ -99,7 +99,7 @@ button:hover{ background:#3399ff }
     </div>
 
     <div class="save-row">
-      <button id="saveSchedule" style="flex:1;">Save Schedule (local + esp)</button>
+      <button id="saveSchedule" style="flex:1;">Save Schedule (ESP EEPROM)</button>
       <button id="startAuto" style="flex:1;">▶️ Start Otomatis</button>
     </div>
   </div>
@@ -118,20 +118,20 @@ button:hover{ background:#3399ff }
 </div>
 
 <script>
-/* ========== Konfigurasi MQTT ========== */
-const brokerUrl = 'wss://broker.emqx.io:8084/mqtt'; // ganti jika perlu
-const client = mqtt.connect(brokerUrl, { clientId: 'dash_' + Math.random().toString(16).substr(2,8), clean: true });
+/* ========== Konfigurasi & konstanta ========== */
+const MQTT_BROKER = 'wss://broker.emqx.io:8084/mqtt'; // ganti sesuai
+const client = mqtt.connect(MQTT_BROKER, { clientId:'dash_' + Math.random().toString(16).substr(2,8), clean:true });
 const ledNames = ["Royal Blue","Blue","Violet","Red","Green","White","Sump","Fan"];
-const scheduleSlots = []; // will hold 'HH:MM' strings
-for(let h=7; h<=16; h++){
-  scheduleSlots.push(`${String(h).padStart(2,'0')}:00`);
-  if(h<16) scheduleSlots.push(`${String(h).padStart(2,'0')}:30`);
-}
-const SLOT_COUNT = scheduleSlots.length; // 20
+const scheduleSlots = [];
+for(let h=7; h<=16; h++){ scheduleSlots.push(`${String(h).padStart(2,'0')}:00`); if(h<16) scheduleSlots.push(`${String(h).padStart(2,'0')}:30`); }
+const SLOT_COUNT = scheduleSlots.length; // 19
+const LS_SCHEDULE = 'aquarium_schedule_v2';
+const LS_MODE = 'aquarium_mode_v2';
+const LS_BATAS = 'aquarium_batas_v2';
 
-/* ========== Build UI (manual sliders + schedule table) ========== */
+/* ========== Build UI ========== */
 const ledControls = document.getElementById('led-controls');
-ledNames.forEach((name, i) => {
+ledNames.forEach((name,i)=>{
   const idx = i+1;
   const div = document.createElement('div');
   div.className = 'slider-container';
@@ -140,68 +140,42 @@ ledNames.forEach((name, i) => {
   ledControls.appendChild(div);
 });
 
-// schedule table
+/* build schedule table */
 const scheduleBody = document.getElementById('scheduleBody');
-for (const t of scheduleSlots) {
+for(const t of scheduleSlots){
   const tr = document.createElement('tr');
   let html = `<td>${t}</td>`;
-  for (let c=1;c<=8;c++){
+  for(let c=1;c<=8;c++){
     html += `<td><input data-time="${t}" data-led="${c}" class="sched-inp" type="number" min="0" max="100" value="0" style="width:60px;text-align:center;"></td>`;
   }
   tr.innerHTML = html;
   scheduleBody.appendChild(tr);
 }
 
-/* ========== LocalStorage keys ========== */
-const LS_SCHEDULE = 'aquarium_schedule_v1';
-const LS_MODE = 'aquarium_mode_v1';
-const LS_BATAS = 'aquarium_batas_v1';
+/* ========== Clock ========== */
+function updateClock(){ const now=new Date(); const t=now.toLocaleTimeString('id-ID',{hour12:false}); document.getElementById('clock').textContent = t; }
+setInterval(updateClock,1000); updateClock();
 
-/* ========== Utilities ========== */
-function slotIndexFromTimeLabel(label){ return scheduleSlots.indexOf(label); } // 0..19
-function toPayloadPercent(uiVal){ return Math.round(uiVal * 2.55); } // 0-100 -> 0-255
-
-/* ========== Clock in auto container ========== */
-function updateClock(){
-  const now = new Date();
-  const t = now.toLocaleTimeString('id-ID',{hour12:false});
-  document.getElementById('clock').textContent = t;
-}
-setInterval(updateClock, 1000);
-updateClock();
-
-/* ========== Chart setup (Chart.js) ========== */
+/* ========== Chart.js ========== */
 const ctx = document.getElementById('tempChart').getContext('2d');
 const labels = [], data1 = [], data2 = [];
-const tempChart = new Chart(ctx, {
-  type: 'line',
-  data: { labels, datasets: [
-    { label:'Atas', data: data1, borderColor: 'rgba(255,99,132,1)', tension:0.3, fill:false },
-    { label:'Bawah', data: data2, borderColor: 'rgba(54,162,235,1)', tension:0.3, fill:false }
-  ]},
-  options: { scales:{ y:{ min: 15, max: 80 } }, plugins:{legend:{labels:{color:'#fff'}}} }
-});
-function pushChart(a,b){
-  const now = new Date().toLocaleTimeString();
-  labels.push(now); data1.push(a); data2.push(b);
-  if(labels.length>60){ labels.shift(); data1.shift(); data2.shift(); }
-  tempChart.update();
-}
+const tempChart = new Chart(ctx, { type:'line', data:{labels, datasets:[{label:'Atas',data:data1,borderColor:'rgba(255,99,132,1)',tension:0.3,fill:false},{label:'Bawah',data:data2,borderColor:'rgba(54,162,235,1)',tension:0.3,fill:false}]}, options:{scales:{y:{min:15,max:80}},plugins:{legend:{labels:{color:'#fff'}}}}});
+function pushChart(a,b){ const now=new Date().toLocaleTimeString(); labels.push(now); data1.push(a); data2.push(b); if(labels.length>60){labels.shift();data1.shift();data2.shift();} tempChart.update(); }
 
-/* ========== MQTT events ========== */
-client.on('connect', ()=> {
-  document.getElementById('status').innerText = '✅ Terhubung ke broker MQTT';
-  document.getElementById('status').style.color = '#0f0';
-  // subscribe essential topics
+/* ========== MQTT handlers ========== */
+client.on('connect', ()=>{
+  document.getElementById('status').innerText = '✅ Terhubung ke broker MQTT'; document.getElementById('status').style.color='#0f0';
   for(let i=1;i<=8;i++) client.subscribe('led/'+i);
   client.subscribe('suhu/ntc1'); client.subscribe('suhu/ntc2');
   client.subscribe('status/suhu'); client.subscribe('status/batasSuhu');
-  client.subscribe('auto/ack'); // optional ack topic
-  // after connect, send local schedule & mode to ESP so it has latest copy
-  loadLocalAndSyncToESP();
+  client.subscribe('auto/dump'); client.subscribe('auto/ack');
+  // request ESP to send saved schedule (dump) so dashboard syncs
+  setTimeout(()=> client.publish('auto/request_dump', '1'), 400);
+  // also load local fallback then sync
+  loadLocalAndTrySync();
 });
-client.on('reconnect', ()=>{ document.getElementById('status').innerText = '♻️ Menghubungkan ulang...'; document.getElementById('status').style.color='#ff0'; });
-client.on('offline', ()=>{ document.getElementById('status').innerText = '❌ Terputus dari MQTT'; document.getElementById('status').style.color='#f00'; });
+client.on('reconnect', ()=>{ document.getElementById('status').innerText='♻️ Menghubungkan ulang...'; document.getElementById('status').style.color='#ff0';});
+client.on('offline', ()=>{ document.getElementById('status').innerText='❌ Terputus dari MQTT'; document.getElementById('status').style.color='#f00'; });
 
 client.on('message', (topic, message) => {
   const msg = message.toString();
@@ -210,91 +184,98 @@ client.on('message', (topic, message) => {
     const perc = Math.round(parseInt(msg)/255*100);
     const s = document.getElementById('led'+idx);
     const n = document.getElementById('led'+idx+'-num');
-    if(s) s.value = perc;
-    if(n) n.value = perc;
-  }
-  if(topic === 'suhu/ntc1'){ pushChart(parseFloat(msg), null); document.getElementById('temp1').innerText = parseFloat(msg).toFixed(1)+' °C'; }
-  if(topic === 'suhu/ntc2'){ pushChart(null, parseFloat(msg)); document.getElementById('temp2').innerText = parseFloat(msg).toFixed(1)+' °C'; }
-  if(topic === 'status/suhu'){ // show alert if TINGGI
-    const box = document.getElementById('alert-box');
-    if(msg.startsWith('TINGGI')){ box.style.display='block'; box.innerHTML = `⚠️ ${msg}`; }
-    else box.style.display='none';
-  }
-  if(topic === 'status/batasSuhu'){
-    document.getElementById('batasSuhu').value = parseFloat(msg).toFixed(1);
-    document.getElementById('batas-info').innerText = 'Batas suhu saat ini: '+msg+' °C';
+    if(s) s.value = perc; if(n) n.value = perc;
+  } else if(topic === 'suhu/ntc1'){ document.getElementById('temp1').innerText = parseFloat(msg).toFixed(1)+' °C'; pushChart(parseFloat(msg), null); }
+  else if(topic === 'suhu/ntc2'){ document.getElementById('temp2').innerText = parseFloat(msg).toFixed(1)+' °C'; pushChart(null, parseFloat(msg)); }
+  else if(topic === 'status/suhu'){ const box=document.getElementById('alert-box'); if(msg.startsWith('TINGGI')){ box.style.display='block'; box.innerHTML = `⚠️ ${msg}`;} else box.style.display='none'; }
+  else if(topic === 'status/batasSuhu'){ document.getElementById('batasSuhu').value = parseFloat(msg).toFixed(1); document.getElementById('batas-info').innerText = 'Batas suhu saat ini: '+msg+' °C'; }
+  else if(topic === 'auto/dump'){
+    // ESP sends JSON string with schedule object: { slots: { "07:00":[v1..v8], ... } }
+    try {
+      const obj = JSON.parse(msg);
+      if(obj && obj.slots){
+        // fill table
+        document.querySelectorAll('.sched-inp').forEach(inp=>{ const t=inp.dataset.time; const led=inp.dataset.led; if(obj.slots[t] && typeof obj.slots[t][led-1] !== 'undefined'){ inp.value = obj.slots[t][led-1]; }});
+        // save to localStorage as copy
+        localStorage.setItem(LS_SCHEDULE, msg);
+        alert('Jadwal otomatis di-load dari ESP.');
+      }
+    } catch(e){ console.warn('auto/dump parse error', e); }
+  } else if(topic === 'auto/ack'){
+    // ack: saved
+    if(msg === 'saved') alert('ESP: Jadwal tersimpan di EEPROM.');
   }
 });
 
-/* ========== Manual slider handlers (publish only in manual mode) ========== */
+/* ========== Manual slider publish (only when mode manual) ========== */
+function modeIsManual(){ return document.getElementById('modeSelect').value === 'manual'; }
 for(let i=1;i<=8;i++){
   const s = document.getElementById('led'+i);
   const n = document.getElementById('led'+i+'-num');
-  s.addEventListener('input', ()=>{ n.value = s.value; if(modeIsManual()){ client.publish('led/'+i, String(toPayloadPercent(s.value))); }});
-  n.addEventListener('change', ()=>{
-    let v = parseInt(n.value); if(isNaN(v)) v = 0; v = Math.max(0, Math.min(100, v));
-    n.value = v; s.value = v;
-    if(modeIsManual()) client.publish('led/'+i, String(toPayloadPercent(v)));
-  });
+  s.addEventListener('input', ()=>{ n.value = s.value; if(modeIsManual()) client.publish('led/'+i, String(Math.round(s.value*2.55))); });
+  n.addEventListener('change', ()=>{ let v = parseInt(n.value)||0; v=Math.max(0,Math.min(100,v)); n.value=v; s.value=v; if(modeIsManual()) client.publish('led/'+i, String(Math.round(v*2.55))); });
 }
-function modeIsManual(){ return document.getElementById('modeSelect').value === 'manual'; }
 
-/* ========== Batas suhu set ========= */
-document.getElementById('setBatas').addEventListener('click', ()=> {
+/* ========== Save batas suhu ========== */
+document.getElementById('setBatas').addEventListener('click', ()=>{
   const val = parseFloat(document.getElementById('batasSuhu').value);
   if(isNaN(val) || val < 30 || val > 90){ alert('Masukkan nilai 30–90 °C'); return; }
   client.publish('set/batasSuhu', String(val));
-  // also persist locally
   localStorage.setItem(LS_BATAS, String(val));
-  alert('Batas suhu dikirim dan disimpan (lokal).');
+  alert('Batas suhu dikirim ke ESP.');
 });
 
-/* ========== Schedule edit handlers (save locally on change) ========== */
+/* ========== Schedule input change -> save to local quickly ========== */
 document.querySelectorAll('.sched-inp').forEach(inp=>{
   inp.addEventListener('change', ()=>{
-    let v = parseInt(inp.value); if(isNaN(v)) v = 0; v = Math.max(0,Math.min(100,v)); inp.value = v;
-    saveScheduleToLocal(); // save local quickly
+    let v = parseInt(inp.value) || 0; v = Math.max(0,Math.min(100,v)); inp.value = v;
+    saveScheduleToLocal(); // quick local save
   });
 });
 
-/* ========== Save Schedule (local + send to ESP to save EEPROM) ========== */
+/* ========== Save schedule to ESP (publish cells then auto/save) ========== */
 document.getElementById('saveSchedule').addEventListener('click', ()=>{
-  saveScheduleToLocal();
-  // publish all cells to ESP using auto/set/<HH:MM>/<led> then auto/save
   publishFullScheduleToESP();
-  alert('Jadwal dikirim ke ESP dan disimpan (EEPROM) — tunggu beberapa detik.');
+  setTimeout(()=> client.publish('auto/save','1'), 300);
+  alert('Mengirim jadwal ke ESP dan menyimpan ke EEPROM...');
 });
+
+/* ========== Publish all cells helper ========== */
+function publishFullScheduleToESP(){
+  document.querySelectorAll('.sched-inp').forEach(inp=>{
+    const t = inp.dataset.time;
+    const led = inp.dataset.led;
+    const v = parseInt(inp.value) || 0;
+    const payload = String(Math.round(v * 2.55));
+    client.publish(`auto/set/${t}/${led}`, payload);
+  });
+}
 
 /* ========== Start Auto ========== */
 document.getElementById('startAuto').addEventListener('click', ()=>{
-  client.publish('auto/start', '1');
-  alert('Perintah Start Otomatis dikirim.');
+  client.publish('auto/start','1');
+  alert('Perintah Start Otomatis dikirim ke ESP.');
 });
 
-/* ========== Publish entire schedule to ESP (auto/set per cell) ========== */
-function publishFullScheduleToESP(){
-  // gather table inputs
-  const all = [];
-  const inputs = document.querySelectorAll('.sched-inp');
-  inputs.forEach(inp => {
-    const t = inp.getAttribute('data-time');
-    const led = inp.getAttribute('data-led');
-    const v = parseInt(inp.value) || 0;
-    const payload = toPayloadPercent(v);
-    client.publish(`auto/set/${t}/${led}`, String(payload));
-  });
-  // after sending all cells, tell ESP to persist
-  setTimeout(()=> client.publish('auto/save', '1'), 200); // small delay to allow messages to reach
-}
+/* ========== Mode select UI handling ========== */
+document.getElementById('modeSelect').addEventListener('change', ()=>{
+  const isAuto = document.getElementById('modeSelect').value === 'auto';
+  // show/hide auto block (you asked earlier for visible only when auto)
+  document.getElementById('auto-container').style.display = isAuto ? 'block' : 'none';
+  // disable sliders when auto
+  for(let i=1;i<=8;i++){ document.getElementById('led'+i).disabled = isAuto; document.getElementById('led'+i+'-num').disabled = isAuto; }
+  // publish mode so ESP acts accordingly
+  client.publish('mode/set', isAuto ? 'auto' : 'manual');
+  localStorage.setItem(LS_MODE, isAuto ? 'auto' : 'manual');
+});
 
-/* ========== Local storage: save/load schedule & mode & batas ========= */
+/* ========== Local storage helpers ========== */
 function saveScheduleToLocal(){
   const obj = { slots: {} };
   document.querySelectorAll('.sched-inp').forEach(inp=>{
-    const t = inp.getAttribute('data-time');
-    const led = inp.getAttribute('data-led');
-    obj.slots[t] = obj.slots[t] || {};
-    obj.slots[t][led] = parseInt(inp.value) || 0;
+    const t = inp.dataset.time; const led = parseInt(inp.dataset.led);
+    obj.slots[t] = obj.slots[t] || [];
+    obj.slots[t][led-1] = parseInt(inp.value) || 0;
   });
   localStorage.setItem(LS_SCHEDULE, JSON.stringify(obj));
 }
@@ -303,55 +284,41 @@ function loadScheduleFromLocal(){
   if(!raw) return false;
   try{
     const obj = JSON.parse(raw);
-    document.querySelectorAll('.sched-inp').forEach(inp=>{
-      const t = inp.getAttribute('data-time');
-      const led = inp.getAttribute('data-led');
-      if(obj.slots && obj.slots[t] && typeof obj.slots[t][led] !== 'undefined'){
-        inp.value = obj.slots[t][led];
-      }
-    });
-    return true;
-  }catch(e){ console.warn('Load schedule local failed', e); return false; }
+    if(obj && obj.slots){
+      document.querySelectorAll('.sched-inp').forEach(inp=>{
+        const t = inp.dataset.time; const led = parseInt(inp.dataset.led);
+        if(obj.slots[t] && typeof obj.slots[t][led-1] !== 'undefined') inp.value = obj.slots[t][led-1];
+      });
+      return true;
+    }
+  }catch(e){ console.warn('local load fail', e); }
+  return false;
 }
 function saveModeToLocal(){ localStorage.setItem(LS_MODE, document.getElementById('modeSelect').value); }
-function loadModeFromLocal(){ const m = localStorage.getItem(LS_MODE); if(m) document.getElementById('modeSelect').value = m; }
-
-/* ========== On startup: load local schedule & mode & batas and sync to ESP ====== */
-function loadLocalAndSyncToESP(){
-  loadModeFromLocal();
-  document.getElementById('modeSelect').dispatchEvent(new Event('change'));
-  const had = loadScheduleFromLocal();
+function loadModeFromLocal(){ const m = localStorage.getItem(LS_MODE); if(m){ document.getElementById('modeSelect').value = m; document.getElementById('modeSelect').dispatchEvent(new Event('change')); } }
+function loadLocalAndTrySync(){
+  // try load from ESP will come via auto/dump; meanwhile fallback to local
+  const ok = loadScheduleFromLocal();
   const batas = localStorage.getItem(LS_BATAS);
   if(batas) document.getElementById('batasSuhu').value = batas;
-  // if had schedule, publish to ESP so it has copy
-  if(had){
-    setTimeout(()=> publishFullScheduleToESP(), 500);
+  loadModeFromLocal();
+  // if local loaded, send it to ESP after small delay (only if ESP doesn't respond)
+  if(ok){
+    setTimeout(()=> {
+      // If auto/dump hasn't arrived by then, push local to ESP
+      // We'll check a flag if ESP dumped within 1.5s, else push
+      if(!window._espDumpReceived) publishFullScheduleToESP();
+    }, 1500);
   }
 }
 
-/* ========== Mode select toggling UI (auto container visible always per request? we keep shown but sliders disabled in auto) ========== */
-document.getElementById('modeSelect').addEventListener('change', ()=>{
-  const isAuto = document.getElementById('modeSelect').value === 'auto';
-  // show auto container (you asked always visible earlier; but we still show/hide to focus)
-  // We'll keep shown but disable manual sliders if auto
-  for(let i=1;i<=8;i++){
-    document.getElementById('led'+i).disabled = isAuto;
-    document.getElementById('led'+i+'-num').disabled = isAuto;
-  }
-  saveModeToLocal();
-});
+/* mark when ESP dump arrives */
+client.on('message', (topic, message) => { if(topic === 'auto/dump') window._espDumpReceived = true; });
 
-/* ========== Helper: load last saved state on page load ====== */
+/* === startup load === */
 document.addEventListener('DOMContentLoaded', ()=>{
-  loadLocalAndSyncToESP();
+  loadLocalAndTrySync();
 });
-
-/* ========== For demo: pushChart with simulated values when no MQTT ====
-   (you can remove this block if real MQTT provides suhu values) */
-setInterval(()=>{
-  // only push if no real data recently
-  if(labels.length < 2){ pushChart(26 + Math.random(), 25 + Math.random()); }
-}, 5000);
 </script>
 </body>
 </html>
