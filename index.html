@@ -1,72 +1,179 @@
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="UTF-8">
-<title>LED Controller</title>
-<script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
-<style>
-body{font-family:Arial;background:#111;color:#fff;text-align:center}
-.section{margin:20px;padding:15px;background:#222;border-radius:10px}
-button{padding:8px 15px;margin:5px}
-input{width:60px}
-</style>
-</head>
-<body>
+#include <WiFi.h>
+#include <PubSubClient.h>
+#include <EEPROM.h>
+#include <time.h>
 
-<h2>LED Aquarium Controller</h2>
-<div id="modeStatus">MODE: -</div>
+// ===== WIFI =====
+const char* ssid = "www.sexymom.biz";
+const char* password = "Unyilunyil";
+const char* mqtt_server = "broker.emqx.io";
 
-<div class="section">
-<h3>Mode</h3>
-<button onclick="setMode('manual')">Manual</button>
-<button onclick="setMode('auto')">Auto</button>
-</div>
+WiFiClient espClient;
+PubSubClient client(espClient);
 
-<div class="section">
-<h3>Auto Level (%)</h3>
-06.30 <input id="a1" type="number" min="0" max="100"><br>
-07.31 <input id="a2" type="number" min="0" max="100"><br>
-09.01 <input id="a3" type="number" min="0" max="100"><br>
-13.01 <input id="a4" type="number" min="0" max="100"><br>
-14.31 <input id="a5" type="number" min="0" max="100"><br><br>
-<button onclick="saveAuto()">SAVE AUTO</button>
-<div id="autoStatus"></div>
-</div>
+// ===== LED =====
+const int ledPins[8] = {5,18,19,21,22,23,25,26};
 
-<script>
-const client = mqtt.connect('wss://broker.emqx.io:8084/mqtt');
+// ===== MODE =====
+bool autoMode = false;
+bool autoSaved = false;
 
-client.on('connect',()=>{
- client.subscribe('status/mode');
- client.subscribe('status/auto');
-});
+int autoLevel[5] = {0,0,0,0,0};
+int currentBrightness = 0;
+int targetBrightness = 0;
 
-client.on('message',(topic,message)=>{
- const msg=message.toString();
+unsigned long lastRamp = 0;
+const int rampInterval = 200;
 
- if(topic==='status/mode'){
-  document.getElementById('modeStatus').innerText="MODE: "+msg;
- }
+// ===== EEPROM =====
+void loadSettings(){
+  EEPROM.begin(256);
 
- if(topic==='status/auto'){
-  document.getElementById('autoStatus').innerText=msg;
- }
-});
+  EEPROM.get(0, autoMode);
+  EEPROM.get(5, autoSaved);
 
-function setMode(mode){
- client.publish('mode',mode);
+  for(int i=0;i<5;i++){
+    EEPROM.get(20 + i*4, autoLevel[i]);
+    if(autoLevel[i]<0 || autoLevel[i]>255) autoLevel[i]=0;
+  }
 }
 
-function saveAuto(){
- for(let i=1;i<=5;i++){
-   let val=parseInt(document.getElementById('a'+i).value);
-   if(isNaN(val)) val=0;
-   val=Math.min(100,Math.max(0,val));
-   client.publish('auto/set'+i,Math.round(val*2.55).toString());
- }
- client.publish('auto/save','1');
-}
-</script>
+void saveSettings(){
+  EEPROM.put(0, autoMode);
+  EEPROM.put(5, autoSaved);
 
-</body>
-</html>
+  for(int i=0;i<5;i++){
+    EEPROM.put(20 + i*4, autoLevel[i]);
+  }
+
+  EEPROM.commit();
+}
+
+// ===== PWM =====
+void setAllLED(int value){
+  value = constrain(value,0,255);
+  for(int i=0;i<8;i++){
+    ledcAttachPin(ledPins[i], i);
+    ledcSetup(i,5000,8);
+    ledcWrite(i,value);
+  }
+}
+
+// ===== AUTO TIME =====
+int getAutoIndex(){
+  struct tm timeinfo;
+  if(!getLocalTime(&timeinfo)) return -1;
+
+  int total = timeinfo.tm_hour*60 + timeinfo.tm_min;
+
+  if(total>=390 && total<=450) return 0;
+  if(total>=451 && total<=540) return 1;
+  if(total>=541 && total<=780) return 2;
+  if(total>=781 && total<=870) return 3;
+  if(total>=871 && total<=960) return 4;
+
+  return -1;
+}
+
+void updateAuto(){
+  if(!autoMode) return;
+
+  int idx = getAutoIndex();
+  if(idx==-1) targetBrightness = 0;
+  else targetBrightness = autoLevel[idx];
+
+  if(millis()-lastRamp >= rampInterval){
+    lastRamp = millis();
+
+    if(currentBrightness < targetBrightness) currentBrightness++;
+    else if(currentBrightness > targetBrightness) currentBrightness--;
+
+    setAllLED(currentBrightness);
+  }
+}
+
+// ===== MQTT CALLBACK =====
+void callback(char* topic, byte* payload, unsigned int length){
+  String t = String(topic);
+  String msg="";
+  for(int i=0;i<length;i++) msg+=(char)payload[i];
+
+  // ===== SET AUTO LEVEL (belum disimpan) =====
+  if(t.startsWith("auto/set")){
+    int idx = t.substring(8).toInt()-1;
+    if(idx>=0 && idx<5){
+      autoLevel[idx] = constrain(msg.toInt(),0,255);
+      autoSaved = false;
+      client.publish("status/auto","LEVEL_UPDATED");
+    }
+  }
+
+  // ===== SAVE AUTO =====
+  if(t=="auto/save"){
+    autoSaved = true;
+    saveSettings();
+    client.publish("status/auto","AUTO_SAVED");
+  }
+
+  // ===== MODE =====
+  if(t=="mode"){
+    if(msg=="auto"){
+      if(autoSaved){
+        autoMode = true;
+        saveSettings();
+        client.publish("status/mode","AUTO");
+      } else {
+        client.publish("status/mode","SAVE_DULU");
+      }
+    }
+
+    if(msg=="manual"){
+      autoMode = false;
+      saveSettings();
+      client.publish("status/mode","MANUAL");
+    }
+  }
+
+  // ===== MANUAL LED =====
+  if(!autoMode && t.startsWith("led/")){
+    currentBrightness = constrain(msg.toInt(),0,255);
+    setAllLED(currentBrightness);
+  }
+}
+
+// ===== MQTT =====
+void reconnect(){
+  while(!client.connected()){
+    if(client.connect("ESP32_LED_Controller")){
+      client.subscribe("mode");
+      client.subscribe("auto/set1");
+      client.subscribe("auto/set2");
+      client.subscribe("auto/set3");
+      client.subscribe("auto/set4");
+      client.subscribe("auto/set5");
+      client.subscribe("auto/save");
+      for(int i=1;i<=8;i++)
+        client.subscribe(("led/"+String(i)).c_str());
+    } else delay(3000);
+  }
+}
+
+void setup(){
+  Serial.begin(115200);
+
+  WiFi.begin(ssid,password);
+  while(WiFi.status()!=WL_CONNECTED) delay(500);
+
+  client.setServer(mqtt_server,1883);
+  client.setCallback(callback);
+
+  configTime(7*3600,0,"pool.ntp.org");
+
+  loadSettings();
+}
+
+void loop(){
+  if(!client.connected()) reconnect();
+  client.loop();
+  updateAuto();
+}
