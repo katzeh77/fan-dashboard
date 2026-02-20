@@ -1,138 +1,230 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>ESP32 LED Controller</title>
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>LED Aquarium Controller</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
 <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
 <style>
+*{box-sizing:border-box}
 body{
-  font-family: Arial;
-  background:#111;
-  color:#fff;
-  text-align:center;
-}
-.container{
-  width:400px;
-  margin:auto;
-  margin-top:20px;
+  margin:0;
+  font-family:'Inter',sans-serif;
+  background:url('https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1350&q=80') no-repeat center center fixed;
+  background-size:cover;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  min-height:100vh;
   padding:20px;
-  background:#222;
-  border-radius:10px;
+  color:#fff;
 }
-input{
-  width:80%;
+h1{
+  margin:20px 0 10px;
+  font-size:28px;
+  text-align:center;
+  text-shadow:2px 2px 6px rgba(0,0,0,0.7);
 }
-button{
-  margin-top:10px;
-  padding:8px 15px;
+#status{
+  font-size:14px;
+  color:#0f0;
+  margin-bottom:10px;
+  text-shadow:1px 1px 3px rgba(0,0,0,0.5);
+}
+.dashboard{
+  background:rgba(255,255,255,0.1);
+  backdrop-filter:blur(15px);
+  border-radius:20px;
+  padding:25px;
+  width:100%;
+  max-width:460px;
+  box-shadow:0 8px 24px rgba(0,0,0,0.4);
+}
+.slider-container{margin:15px 0;text-align:left}
+.slider-container label{
+  display:block;
+  font-size:16px;
+  font-weight:600;
+  margin-bottom:5px;
+  color:#fff;
+}
+input[type=range]{
+  -webkit-appearance:none;
+  width:100%;
+  height:12px;
+  border-radius:6px;
+  background:rgba(255,255,255,0.3);
+}
+input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;
+  width:24px;
+  height:24px;
+  border-radius:50%;
+  background:#fff;
+  border:2px solid #007bff;
   cursor:pointer;
 }
-.section{
-  margin-top:20px;
-  padding:10px;
-  background:#333;
+input[type=number]{
+  width:60px;
+  border:none;
   border-radius:8px;
+  text-align:center;
+  padding:5px;
+  background:rgba(255,255,255,0.2);
+  color:#fff;
+}
+button{
+  background:#007bff;
+  color:#fff;
+  border:none;
+  border-radius:8px;
+  padding:6px 14px;
+  cursor:pointer;
+  font-weight:600;
+  margin-top:6px;
+}
+button:hover{background:#3399ff}
+.mode-box{
+  background:rgba(255,255,255,0.15);
+  border-radius:12px;
+  padding:15px;
+  margin-bottom:15px;
 }
 </style>
 </head>
 <body>
 
-<div class="container">
-<h2>ESP32 LED Controller</h2>
+<h1>LED Aquarium Controller</h1>
+<div id="status">🔌 Menghubungkan ke MQTT...</div>
 
-<!-- ================= MANUAL ================= -->
-<div class="section">
-<h3>MODE MANUAL</h3>
-<input type="range" min="0" max="100" value="0" id="manualSlider" 
-oninput="manualControl(this.value)">
-<p>Brightness: <span id="manualVal">0</span>%</p>
-<button onclick="setManualMode()">Aktifkan Manual</button>
+<div class="dashboard">
+
+<!-- ================= MODE ================= -->
+<div class="mode-box">
+  <h3>Mode Kontrol</h3>
+  <button onclick="setManual()">Manual</button>
+  <button onclick="setAuto()">Auto</button>
+  <div style="margin-top:8px">Status Mode: <span id="modeStatus">-</span></div>
 </div>
 
-<!-- ================= AUTO ================= -->
-<div class="section">
-<h3>MODE OTOMATIS</h3>
+<!-- ================= LED MANUAL ================= -->
+<div id="led-controls"></div>
 
-<p>06.30 - 07.30</p>
-<input type="number" id="a1" min="0" max="100">
+<!-- ================= AUTO SETTING ================= -->
+<div class="mode-box">
+  <h3>Pengaturan Mode Otomatis</h3>
+  06.30-07.30 <input type="number" id="a1" min="0" max="100"><br><br>
+  07.31-09.00 <input type="number" id="a2" min="0" max="100"><br><br>
+  09.01-13.00 <input type="number" id="a3" min="0" max="100"><br><br>
+  13.01-14.30 <input type="number" id="a4" min="0" max="100"><br><br>
+  14.31-16.00 <input type="number" id="a5" min="0" max="100"><br><br>
 
-<p>07.31 - 09.00</p>
-<input type="number" id="a2" min="0" max="100">
-
-<p>09.01 - 13.00</p>
-<input type="number" id="a3" min="0" max="100">
-
-<p>13.01 - 14.30</p>
-<input type="number" id="a4" min="0" max="100">
-
-<p>14.31 - 16.00</p>
-<input type="number" id="a5" min="0" max="100">
-
-<button onclick="saveAuto()">SAVE AUTO</button>
-<button onclick="setAutoMode()">Aktifkan Auto</button>
-
-<p id="autoStatus"></p>
+  <button onclick="saveAuto()">SAVE AUTO</button>
+  <div id="autoInfo" style="margin-top:8px;color:#ddd;font-size:14px;"></div>
 </div>
-
-<hr>
-<p>Status Mode: <span id="modeStatus">-</span></p>
 
 </div>
 
 <script>
 
 // ================= MQTT =================
-const client = mqtt.connect("wss://broker.emqx.io:8084/mqtt");
+const client = mqtt.connect('wss://broker.emqx.io:8084/mqtt');
+const ledNames = ["Royal Blue","Blue","Violet","Red","Green","White","Sump","Fan"];
+const container = document.getElementById('led-controls');
+const statusText = document.getElementById('status');
+let currentMode="manual";
 
-client.on("connect",function(){
-  console.log("MQTT Connected");
-  client.subscribe("status/mode");
-  client.subscribe("status/auto");
+// ================= Buat slider =================
+ledNames.forEach((name,i)=>{
+  const idx=i+1;
+  container.innerHTML+=`
+    <div class="slider-container">
+      <label>${name} <input type="number" id="led${idx}-num" min="0" max="100" value="0">%</label>
+      <input type="range" id="led${idx}" min="0" max="100" value="0">
+    </div>`;
 });
 
-client.on("message",function(topic,message){
-  let msg = message.toString();
+// ================= MQTT CONNECT =================
+client.on('connect',()=>{
+  statusText.innerHTML="✅ Terhubung ke broker MQTT";
+  for(let i=1;i<=8;i++) client.subscribe('led/'+i);
+  client.subscribe('status/mode');
+  client.subscribe('status/auto');
+});
 
-  if(topic==="status/mode"){
-    document.getElementById("modeStatus").innerText = msg;
+client.on('message',(topic,message)=>{
+  const msg=message.toString();
+
+  if(topic.startsWith('led/')){
+    const num=parseInt(topic.split('/')[1]);
+    const percent=Math.round(parseInt(msg)/255*100);
+    document.getElementById('led'+num).value=percent;
+    document.getElementById('led'+num+'-num').value=percent;
   }
 
-  if(topic==="status/auto"){
-    document.getElementById("autoStatus").innerText = msg;
+  if(topic==='status/mode'){
+    currentMode=msg;
+    document.getElementById('modeStatus').innerText=msg.toUpperCase();
+    toggleManual(msg==="manual");
+  }
+
+  if(topic==='status/auto'){
+    document.getElementById('autoInfo').innerText=msg;
   }
 });
 
-// ================= MANUAL =================
-function manualControl(val){
-  document.getElementById("manualVal").innerText = val;
-  let pwm = Math.round(val*2.55);
-  client.publish("led/1", pwm.toString());
-}
-
-function setManualMode(){
+// ================= MODE =================
+function setManual(){
   client.publish("mode","manual");
 }
-
-// ================= AUTO =================
-function saveAuto(){
-
-  for(let i=1;i<=5;i++){
-    let val = parseInt(document.getElementById("a"+i).value);
-    if(isNaN(val)) val = 0;
-    val = Math.min(100,Math.max(0,val));
-
-    let pwm = Math.round(val*2.55);
-    client.publish("auto/set"+i, pwm.toString());
-  }
-
-  client.publish("auto/save","1");
-}
-
-function setAutoMode(){
+function setAuto(){
   client.publish("mode","auto");
 }
 
-</script>
+function toggleManual(enable){
+  for(let i=1;i<=8;i++){
+    document.getElementById('led'+i).disabled=!enable;
+    document.getElementById('led'+i+'-num').disabled=!enable;
+  }
+}
 
+// ================= SAVE AUTO =================
+function saveAuto(){
+  for(let i=1;i<=5;i++){
+    let val=parseInt(document.getElementById("a"+i).value);
+    if(isNaN(val)) val=0;
+    val=Math.min(100,Math.max(0,val));
+    client.publish("auto/set"+i,Math.round(val*2.55).toString());
+  }
+  client.publish("auto/save","1");
+  document.getElementById("autoInfo").innerText="Data auto dikirim. Silakan aktifkan mode Auto.";
+}
+
+// ================= MANUAL SLIDER =================
+for(let i=1;i<=8;i++){
+  const s=document.getElementById('led'+i);
+  const n=document.getElementById('led'+i+'-num');
+
+  s.addEventListener('input',()=>{
+    if(currentMode!=="manual") return;
+    n.value=s.value;
+    client.publish('led/'+i,Math.round(s.value*2.55).toString());
+  });
+
+  n.addEventListener('change',()=>{
+    if(currentMode!=="manual") return;
+    let v=parseInt(n.value);
+    if(isNaN(v))v=0;
+    v=Math.min(100,Math.max(0,v));
+    n.value=v;
+    s.value=v;
+    client.publish('led/'+i,Math.round(v*2.55).toString());
+  });
+}
+
+</script>
 </body>
 </html>
