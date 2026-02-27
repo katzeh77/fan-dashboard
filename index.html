@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>LED Aquarium Controller</title>
-
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
 <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -23,12 +22,21 @@ body{
   padding:20px;
   color:#fff;
 }
+
 h1{
   margin:20px 0 10px;
   font-size:28px;
   text-align:center;
   text-shadow:2px 2px 6px rgba(0,0,0,0.7);
 }
+
+#status{
+  font-size:14px;
+  color:#0f0;
+  margin-bottom:10px;
+  text-shadow:1px 1px 3px rgba(0,0,0,0.5);
+}
+
 .dashboard{
   background:rgba(255,255,255,0.1);
   backdrop-filter:blur(15px);
@@ -38,19 +46,88 @@ h1{
   max-width:460px;
   box-shadow:0 8px 24px rgba(0,0,0,0.4);
 }
+
+.temp-container{
+  display:flex;
+  justify-content:space-around;
+  margin-bottom:20px;
+}
+
+.temp-card{
+  background:rgba(255,255,255,0.15);
+  border-radius:12px;
+  padding:15px 20px;
+  text-align:center;
+  min-width:120px;
+  box-shadow:0 4px 10px rgba(0,0,0,0.3);
+  transition:background 0.3s;
+}
+
+.temp-value{
+  font-size:24px;
+  font-weight:600;
+  margin-top:5px;
+}
+
 .slider-container{margin:15px 0;text-align:left}
+
 .slider-container label{
   display:block;
   font-size:16px;
   font-weight:600;
   margin-bottom:5px;
+  color:#fff;
+  text-shadow:1px 1px 2px rgba(0,0,0,0.6);
 }
+
 input[type=range]{
+  -webkit-appearance:none;
   width:100%;
+  height:12px;
+  border-radius:6px;
+  background:rgba(255,255,255,0.3);
+  outline:none;
 }
+
+input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;
+  width:24px;
+  height:24px;
+  border-radius:50%;
+  background:#fff;
+  border:2px solid #007bff;
+  cursor:pointer;
+}
+
 input[type=number]{
   width:60px;
+  border:none;
+  border-radius:8px;
+  text-align:center;
+  padding:5px;
+  background:rgba(255,255,255,0.2);
+  color:#fff;
 }
+
+#alert-box{
+  display:none;
+  background:rgba(255,0,0,0.4);
+  padding:10px;
+  margin:10px 0;
+  border-radius:10px;
+  text-align:center;
+  font-weight:600;
+}
+
+#batas-container,
+#mode-container{
+  background:rgba(255,255,255,0.15);
+  border-radius:12px;
+  padding:15px;
+  margin-top:15px;
+  box-shadow:0 4px 10px rgba(0,0,0,0.3);
+}
+
 button{
   background:#007bff;
   color:#fff;
@@ -60,120 +137,147 @@ button{
   cursor:pointer;
   font-weight:600;
 }
+button:hover{background:#3399ff}
+
+#chart-container{
+  margin-top:25px;
+  background:rgba(255,255,255,0.1);
+  padding:15px;
+  border-radius:15px;
+}
 </style>
 </head>
 
 <body>
+
 <h1>LED Aquarium Controller</h1>
+<div id="status">🔌 Menghubungkan ke MQTT...</div>
 
 <div class="dashboard">
 
-  <!-- MODE -->
-  <h3>Mode Operasi</h3>
-  <select id="modeSelect">
-    <option value="MANUAL">Manual</option>
-    <option value="AUTO">Otomatis</option>
-  </select>
-
-  <!-- AUTO SETTINGS -->
-  <div id="autoSettings" style="display:none;margin-top:15px;">
-    <h3>Auto Sunrise – Sunset</h3>
-
-    Mulai: <input type="time" id="startTime" value="07:00"><br><br>
-    Puncak Mulai: <input type="time" id="peakStart" value="11:00"><br><br>
-    Puncak Selesai: <input type="time" id="peakEnd" value="12:30"><br><br>
-    Selesai: <input type="time" id="endTime" value="16:00"><br><br>
-
-    <button id="saveAuto">Simpan Auto</button>
+  <div class="temp-container">
+    <div class="temp-card">Atas<br><span id="temp1" class="temp-value">-- °C</span></div>
+    <div class="temp-card">Bawah<br><span id="temp2" class="temp-value">-- °C</span></div>
   </div>
 
-  <hr>
+  <div id="alert-box"></div>
 
-  <!-- LED CONTROLS -->
   <div id="led-controls"></div>
+
+  <div id="batas-container">
+    <h3>Batas Suhu Maksimum</h3>
+    <input type="number" id="batasSuhu" min="30" max="90" value="50"> °C
+    <button id="setBatas">Simpan</button>
+    <div id="batas-info" style="margin-top:8px;color:#ddd;font-size:14px;"></div>
+  </div>
+
+  <!-- MODE SECTION -->
+  <div id="mode-container">
+    <h3>Mode Lampu</h3>
+    <label>
+      <input type="radio" name="mode" value="MANUAL" checked> Manual
+    </label>
+    <label style="margin-left:15px;">
+      <input type="radio" name="mode" value="AUTO"> Auto Sunrise / Sunset
+    </label>
+    <br><br>
+    <button id="saveMode">Save Mode</button>
+    <div id="mode-info" style="margin-top:8px;color:#ddd;font-size:14px;"></div>
+  </div>
+
+  <div id="chart-container">
+    <h3 style="text-align:center;margin-bottom:10px;">Grafik Suhu Real-Time</h3>
+    <canvas id="tempChart" width="400" height="200"></canvas>
+  </div>
 
 </div>
 
 <script>
 
-// MQTT
+// ================= MQTT =================
 const client = mqtt.connect('wss://broker.emqx.io:8084/mqtt');
 const ledNames = ["Royal Blue","Blue","Violet","Red","Green","White","Sump","Fan"];
 const container = document.getElementById('led-controls');
+const statusText = document.getElementById('status');
 
-let autoMode = false;
-
-// ===== CREATE SLIDERS =====
+// ====== Generate slider ======
 ledNames.forEach((name,i)=>{
   const idx=i+1;
   container.innerHTML+=`
   <div class="slider-container">
-    <label>${name} 
-    <input type="number" id="led${idx}-num" min="0" max="100" value="0">%</label>
+    <label>${name} <input type="number" id="led${idx}-num" min="0" max="100" value="0">%</label>
     <input type="range" id="led${idx}" min="0" max="100" value="0">
   </div>`;
 });
 
-// ===== SLIDER FUNCTION =====
+// ===== MQTT EVENTS =====
+client.on('connect',()=>{
+  statusText.innerHTML="✅ Terhubung ke broker MQTT";
+  statusText.style.color="#0f0";
+  for(let i=1;i<=8;i++) client.subscribe('led/'+i);
+  client.subscribe('suhu/ntc1');
+  client.subscribe('suhu/ntc2');
+  client.subscribe('status/suhu');
+  client.subscribe('status/batasSuhu');
+  client.subscribe('mode/status');
+});
+
+client.on('offline',()=>{
+  statusText.innerHTML="❌ Terputus dari MQTT";
+  statusText.style.color="#f00";
+});
+
+client.on('message',(topic,message)=>{
+  const msg=message.toString();
+
+  if(topic.startsWith('led/')){
+    const num=parseInt(topic.split('/')[1]);
+    const percent=Math.round(parseInt(msg)/255*100);
+    document.getElementById('led'+num).value=percent;
+    document.getElementById('led'+num+'-num').value=percent;
+  }
+
+  if(topic==='mode/status'){
+    document.getElementById('mode-info').innerText='Mode aktif: '+msg;
+    document.querySelector(`input[value="${msg}"]`).checked=true;
+  }
+});
+
+// ===== LED CONTROL =====
 for(let i=1;i<=8;i++){
   const s=document.getElementById('led'+i);
   const n=document.getElementById('led'+i+'-num');
 
   s.addEventListener('input',()=>{
-    if(autoMode) return;
     n.value=s.value;
     client.publish('led/'+i,Math.round(s.value*2.55).toString());
   });
 
   n.addEventListener('change',()=>{
-    if(autoMode) return;
-    let v=parseInt(n.value)||0;
+    let v=parseInt(n.value);
+    if(isNaN(v))v=0;
     v=Math.max(0,Math.min(100,v));
     s.value=v;
     client.publish('led/'+i,Math.round(v*2.55).toString());
   });
 }
 
-// ===== MODE SWITCH =====
-document.getElementById('modeSelect').addEventListener('change',function(){
-  autoMode = this.value==="AUTO";
-
-  client.publish("mode/set", autoMode?"AUTO":"MANUAL");
-
-  document.getElementById('autoSettings').style.display=
-    autoMode?"block":"none";
-
-  // disable slider saat AUTO
-  for(let i=1;i<=8;i++){
-    document.getElementById('led'+i).disabled=autoMode;
-    document.getElementById('led'+i+'-num').disabled=autoMode;
-  }
+// ===== SET MODE =====
+document.getElementById('saveMode').addEventListener('click',()=>{
+  const selected=document.querySelector('input[name="mode"]:checked').value;
+  client.publish('mode/set',selected);
+  alert('Mode dikirim: '+selected);
 });
 
-// ===== SAVE AUTO =====
-function timeToMin(t){
-  const p=t.split(":");
-  return parseInt(p[0])*60+parseInt(p[1]);
-}
-
-document.getElementById('saveAuto').addEventListener('click',function(){
-
-  const start=timeToMin(startTime.value);
-  const peakS=timeToMin(peakStart.value);
-  const peakE=timeToMin(peakEnd.value);
-  const end=timeToMin(endTime.value);
-
-  let payload=start+","+peakS+","+peakE+","+end;
-
-  for(let i=1;i<=8;i++){
-    const percent=parseInt(document.getElementById('led'+i).value);
-    payload+=","+Math.round(percent*2.55);
+// ===== SET BATAS SUHU =====
+document.getElementById('setBatas').addEventListener('click',()=>{
+  const val=parseFloat(document.getElementById('batasSuhu').value);
+  if(val>=30 && val<=90){
+    client.publish('set/batasSuhu',val.toString());
+    alert('Batas suhu dikirim: '+val+' °C');
+  }else{
+    alert('Masukkan nilai 30–90 °C');
   }
-
-  client.publish("auto/set",payload);
-  client.publish("mode/set","AUTO");
-
-  alert("Auto sunrise–sunset aktif");
 });
 
 </script>
