@@ -1,51 +1,173 @@
-<!-- TAMBAHKAN DI DALAM dashboard SEBELUM led-controls -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>LED Aquarium Controller</title>
 
-<div style="margin-bottom:15px;">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+*{box-sizing:border-box}
+body{
+  margin:0;
+  font-family:'Inter',sans-serif;
+  background:url('https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1350&q=80') no-repeat center center fixed;
+  background-size:cover;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  min-height:100vh;
+  padding:20px;
+  color:#fff;
+}
+h1{
+  margin:20px 0 10px;
+  font-size:28px;
+  text-align:center;
+  text-shadow:2px 2px 6px rgba(0,0,0,0.7);
+}
+.dashboard{
+  background:rgba(255,255,255,0.1);
+  backdrop-filter:blur(15px);
+  border-radius:20px;
+  padding:25px;
+  width:100%;
+  max-width:460px;
+  box-shadow:0 8px 24px rgba(0,0,0,0.4);
+}
+.slider-container{margin:15px 0;text-align:left}
+.slider-container label{
+  display:block;
+  font-size:16px;
+  font-weight:600;
+  margin-bottom:5px;
+}
+input[type=range]{
+  width:100%;
+}
+input[type=number]{
+  width:60px;
+}
+button{
+  background:#007bff;
+  color:#fff;
+  border:none;
+  border-radius:8px;
+  padding:6px 14px;
+  cursor:pointer;
+  font-weight:600;
+}
+</style>
+</head>
+
+<body>
+<h1>LED Aquarium Controller</h1>
+
+<div class="dashboard">
+
+  <!-- MODE -->
   <h3>Mode Operasi</h3>
   <select id="modeSelect">
     <option value="MANUAL">Manual</option>
     <option value="AUTO">Otomatis</option>
   </select>
-</div>
 
-<div id="autoSettings" style="display:none;margin-bottom:15px;">
-  <h3>Auto Sunrise–Sunset</h3>
-  Mulai: <input type="time" id="startTime" value="07:00"><br><br>
-  Puncak Mulai: <input type="time" id="peakStart" value="11:00"><br><br>
-  Puncak Selesai: <input type="time" id="peakEnd" value="12:30"><br><br>
-  Selesai: <input type="time" id="endTime" value="16:00"><br><br>
-  <button id="saveAuto">Simpan Auto</button>
+  <!-- AUTO SETTINGS -->
+  <div id="autoSettings" style="display:none;margin-top:15px;">
+    <h3>Auto Sunrise – Sunset</h3>
+
+    Mulai: <input type="time" id="startTime" value="07:00"><br><br>
+    Puncak Mulai: <input type="time" id="peakStart" value="11:00"><br><br>
+    Puncak Selesai: <input type="time" id="peakEnd" value="12:30"><br><br>
+    Selesai: <input type="time" id="endTime" value="16:00"><br><br>
+
+    <button id="saveAuto">Simpan Auto</button>
+  </div>
+
+  <hr>
+
+  <!-- LED CONTROLS -->
+  <div id="led-controls"></div>
+
 </div>
 
 <script>
-function timeToMinutes(t){
+
+// MQTT
+const client = mqtt.connect('wss://broker.emqx.io:8084/mqtt');
+const ledNames = ["Royal Blue","Blue","Violet","Red","Green","White","Sump","Fan"];
+const container = document.getElementById('led-controls');
+
+let autoMode = false;
+
+// ===== CREATE SLIDERS =====
+ledNames.forEach((name,i)=>{
+  const idx=i+1;
+  container.innerHTML+=`
+  <div class="slider-container">
+    <label>${name} 
+    <input type="number" id="led${idx}-num" min="0" max="100" value="0">%</label>
+    <input type="range" id="led${idx}" min="0" max="100" value="0">
+  </div>`;
+});
+
+// ===== SLIDER FUNCTION =====
+for(let i=1;i<=8;i++){
+  const s=document.getElementById('led'+i);
+  const n=document.getElementById('led'+i+'-num');
+
+  s.addEventListener('input',()=>{
+    if(autoMode) return;
+    n.value=s.value;
+    client.publish('led/'+i,Math.round(s.value*2.55).toString());
+  });
+
+  n.addEventListener('change',()=>{
+    if(autoMode) return;
+    let v=parseInt(n.value)||0;
+    v=Math.max(0,Math.min(100,v));
+    s.value=v;
+    client.publish('led/'+i,Math.round(v*2.55).toString());
+  });
+}
+
+// ===== MODE SWITCH =====
+document.getElementById('modeSelect').addEventListener('change',function(){
+  autoMode = this.value==="AUTO";
+
+  client.publish("mode/set", autoMode?"AUTO":"MANUAL");
+
+  document.getElementById('autoSettings').style.display=
+    autoMode?"block":"none";
+
+  // disable slider saat AUTO
+  for(let i=1;i<=8;i++){
+    document.getElementById('led'+i).disabled=autoMode;
+    document.getElementById('led'+i+'-num').disabled=autoMode;
+  }
+});
+
+// ===== SAVE AUTO =====
+function timeToMin(t){
   const p=t.split(":");
   return parseInt(p[0])*60+parseInt(p[1]);
 }
 
-document.getElementById('modeSelect').addEventListener('change',function(){
-  const mode=this.value;
-  client.publish("mode/set",mode);
-
-  if(mode==="AUTO")
-    document.getElementById('autoSettings').style.display='block';
-  else
-    document.getElementById('autoSettings').style.display='none';
-});
-
 document.getElementById('saveAuto').addEventListener('click',function(){
 
-  const start=timeToMinutes(document.getElementById('startTime').value);
-  const peakS=timeToMinutes(document.getElementById('peakStart').value);
-  const peakE=timeToMinutes(document.getElementById('peakEnd').value);
-  const end=timeToMinutes(document.getElementById('endTime').value);
+  const start=timeToMin(startTime.value);
+  const peakS=timeToMin(peakStart.value);
+  const peakE=timeToMin(peakEnd.value);
+  const end=timeToMin(endTime.value);
 
   let payload=start+","+peakS+","+peakE+","+end;
 
   for(let i=1;i<=8;i++){
     const percent=parseInt(document.getElementById('led'+i).value);
-    const pwm=Math.round(percent*2.55);
-    payload+=","+pwm;
+    payload+=","+Math.round(percent*2.55);
   }
 
   client.publish("auto/set",payload);
@@ -53,4 +175,7 @@ document.getElementById('saveAuto').addEventListener('click',function(){
 
   alert("Auto sunrise–sunset aktif");
 });
+
 </script>
+</body>
+</html>
