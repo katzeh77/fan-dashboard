@@ -1,98 +1,119 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta charset="UTF-8">
-<title>LED Aquarium Controller</title>
+<title>Reef Controller</title>
 <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
-<body>
 
-<h2>LED Aquarium Controller</h2>
-<div id="status">Connecting...</div>
+<body style="background:#111;color:white;font-family:Arial;padding:20px">
 
-<h3>Mode</h3>
+<h2>Reef LED Controller</h2>
+
 <button onclick="setMode('MANUAL')">Manual</button>
 <button onclick="setMode('AUTO')">Auto</button>
+<p id="modeStatus">Mode: MANUAL</p>
 
-<h3>Auto Max Level (11:00–12:30)</h3>
-<div id="autoInputs"></div>
-<button onclick="saveAuto()">Save</button>
+<div id="sliders"></div>
 
-<h3>LED Manual Control</h3>
-<div id="leds"></div>
+<h3>Auto Max Level</h3>
+<div id="autoLevels"></div>
 
 <h3>Suhu</h3>
-Atas: <span id="t1">-</span><br>
-Bawah: <span id="t2">-</span><br>
-Batas: <input type="number" id="batas" value="50">
-<button onclick="setBatas()">Set</button>
+<p>Atas: <span id="tempTop">0</span> °C</p>
+<p>Bawah: <span id="tempBottom">0</span> °C</p>
 
-<canvas id="chart"></canvas>
+<input type="number" id="maxTemp" value="30">
+<button onclick="setMaxTemp()">Set Max Temp</button>
+
+<canvas id="tempChart"></canvas>
 
 <script>
-const client = mqtt.connect('wss://broker.emqx.io:8084/mqtt');
-const ledNames=["Royal Blue","Blue","Violet","Red","Green","White","Sump","Fan"];
+
+const client = mqtt.connect("wss://broker.hivemq.com:8884/mqtt");
 let mode="MANUAL";
 
+const ledNames=["RB","B","W","R","G","UV","CH7","CH8"];
+
+const sliders=document.getElementById("sliders");
+const autoDiv=document.getElementById("autoLevels");
+
 ledNames.forEach((n,i)=>{
- document.getElementById("leds").innerHTML+=
- n+` <input type="range" min="0" max="100" value="0"
- oninput="sendLED(${i+1},this.value)"><br>`;
- document.getElementById("autoInputs").innerHTML+=
- n+` <input type="number" id="auto${i}" value="100"><br>`;
+  sliders.innerHTML+=`
+  <div>
+    ${n}
+    <input type="range" min="0" max="100" value="0"
+      oninput="setLED(${i},this.value)">
+  </div>`;
+  
+  autoDiv.innerHTML+=`
+  <div>
+    ${n}
+    <input type="number" min="0" max="100" value="100"
+      onchange="setAuto(${i},this.value)">
+  </div>`;
 });
 
-function sendLED(ch,val){
- if(mode==="MANUAL")
-   client.publish("led/"+ch,Math.round(val*2.55).toString());
+function setLED(ch,val){
+  client.publish("reef/led/"+ch,val);
+}
+
+function setAuto(ch,val){
+  client.publish("reef/auto/"+ch,val);
 }
 
 function setMode(m){
- mode=m;
- client.publish("set/mode",m);
+  mode=m;
+  client.publish("reef/mode",m);
+  document.getElementById("modeStatus").innerText="Mode: "+m;
 }
 
-function saveAuto(){
- for(let i=0;i<8;i++){
-   let v=document.getElementById("auto"+i).value;
-   client.publish("set/autoMax/"+i,v);
- }
+function setMaxTemp(){
+  let v=document.getElementById("maxTemp").value;
+  client.publish("reef/maxTemp",v);
 }
 
-function setBatas(){
- let v=document.getElementById("batas").value;
- client.publish("set/batasSuhu",v);
+client.on("connect",()=>{
+  client.subscribe("reef/#");
+});
+
+client.on("message",(topic,msg)=>{
+  let data=msg.toString();
+
+  if(topic=="reef/temp/top"){
+    document.getElementById("tempTop").innerText=data;
+    addChart(parseFloat(data));
+  }
+  if(topic=="reef/temp/bottom"){
+    document.getElementById("tempBottom").innerText=data;
+  }
+});
+
+// ===== CHART =====
+const ctx=document.getElementById("tempChart");
+const chart=new Chart(ctx,{
+  type:'line',
+  data:{
+    labels:[],
+    datasets:[{
+      label:'Suhu Atas',
+      data:[],
+      borderColor:'cyan'
+    }]
+  }
+});
+
+function addChart(val){
+  let time=new Date().toLocaleTimeString();
+  chart.data.labels.push(time);
+  chart.data.datasets[0].data.push(val);
+  if(chart.data.labels.length>20){
+    chart.data.labels.shift();
+    chart.data.datasets[0].data.shift();
+  }
+  chart.update();
 }
 
-client.on('connect',()=>{
- document.getElementById("status").innerHTML="Connected";
- client.subscribe("suhu/ntc1");
- client.subscribe("suhu/ntc2");
- client.subscribe("status/suhu");
-});
-
-let data1=[],data2=[],labels=[];
-const ctx=document.getElementById('chart').getContext('2d');
-new Chart(ctx,{
- type:'line',
- data:{labels:labels,
- datasets:[
- {label:'Atas',data:data1,borderColor:'red'},
- {label:'Bawah',data:data2,borderColor:'blue'}
- ]}
-});
-
-client.on('message',(topic,message)=>{
- let msg=message.toString();
- if(topic==="suhu/ntc1"){
-   document.getElementById("t1").innerHTML=msg;
- }
- if(topic==="suhu/ntc2"){
-   document.getElementById("t2").innerHTML=msg;
- }
-});
 </script>
-
 </body>
 </html>
