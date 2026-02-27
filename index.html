@@ -1,0 +1,56 @@
+<!-- TAMBAHKAN DI DALAM dashboard SEBELUM led-controls -->
+
+<div style="margin-bottom:15px;">
+  <h3>Mode Operasi</h3>
+  <select id="modeSelect">
+    <option value="MANUAL">Manual</option>
+    <option value="AUTO">Otomatis</option>
+  </select>
+</div>
+
+<div id="autoSettings" style="display:none;margin-bottom:15px;">
+  <h3>Auto Sunrise–Sunset</h3>
+  Mulai: <input type="time" id="startTime" value="07:00"><br><br>
+  Puncak Mulai: <input type="time" id="peakStart" value="11:00"><br><br>
+  Puncak Selesai: <input type="time" id="peakEnd" value="12:30"><br><br>
+  Selesai: <input type="time" id="endTime" value="16:00"><br><br>
+  <button id="saveAuto">Simpan Auto</button>
+</div>
+
+<script>
+function timeToMinutes(t){
+  const p=t.split(":");
+  return parseInt(p[0])*60+parseInt(p[1]);
+}
+
+document.getElementById('modeSelect').addEventListener('change',function(){
+  const mode=this.value;
+  client.publish("mode/set",mode);
+
+  if(mode==="AUTO")
+    document.getElementById('autoSettings').style.display='block';
+  else
+    document.getElementById('autoSettings').style.display='none';
+});
+
+document.getElementById('saveAuto').addEventListener('click',function(){
+
+  const start=timeToMinutes(document.getElementById('startTime').value);
+  const peakS=timeToMinutes(document.getElementById('peakStart').value);
+  const peakE=timeToMinutes(document.getElementById('peakEnd').value);
+  const end=timeToMinutes(document.getElementById('endTime').value);
+
+  let payload=start+","+peakS+","+peakE+","+end;
+
+  for(let i=1;i<=8;i++){
+    const percent=parseInt(document.getElementById('led'+i).value);
+    const pwm=Math.round(percent*2.55);
+    payload+=","+pwm;
+  }
+
+  client.publish("auto/set",payload);
+  client.publish("mode/set","AUTO");
+
+  alert("Auto sunrise–sunset aktif");
+});
+</script>
