@@ -22,21 +22,17 @@ body{
   padding:20px;
   color:#fff;
 }
-
 h1{
   margin:20px 0 10px;
   font-size:28px;
   text-align:center;
   text-shadow:2px 2px 6px rgba(0,0,0,0.7);
 }
-
 #status{
   font-size:14px;
   color:#0f0;
   margin-bottom:10px;
-  text-shadow:1px 1px 3px rgba(0,0,0,0.5);
 }
-
 .dashboard{
   background:rgba(255,255,255,0.1);
   backdrop-filter:blur(15px);
@@ -46,88 +42,32 @@ h1{
   max-width:460px;
   box-shadow:0 8px 24px rgba(0,0,0,0.4);
 }
-
 .temp-container{
   display:flex;
   justify-content:space-around;
   margin-bottom:20px;
 }
-
 .temp-card{
   background:rgba(255,255,255,0.15);
   border-radius:12px;
   padding:15px 20px;
   text-align:center;
   min-width:120px;
-  box-shadow:0 4px 10px rgba(0,0,0,0.3);
-  transition:background 0.3s;
 }
-
 .temp-value{
   font-size:24px;
   font-weight:600;
   margin-top:5px;
 }
-
-.slider-container{margin:15px 0;text-align:left}
-
-.slider-container label{
-  display:block;
-  font-size:16px;
-  font-weight:600;
-  margin-bottom:5px;
-  color:#fff;
-  text-shadow:1px 1px 2px rgba(0,0,0,0.6);
-}
-
+.slider-container{margin:15px 0}
 input[type=range]{
-  -webkit-appearance:none;
   width:100%;
-  height:12px;
-  border-radius:6px;
-  background:rgba(255,255,255,0.3);
-  outline:none;
 }
-
-input[type=range]::-webkit-slider-thumb{
-  -webkit-appearance:none;
-  width:24px;
-  height:24px;
-  border-radius:50%;
-  background:#fff;
-  border:2px solid #007bff;
-  cursor:pointer;
-}
-
 input[type=number]{
   width:60px;
-  border:none;
   border-radius:8px;
   text-align:center;
-  padding:5px;
-  background:rgba(255,255,255,0.2);
-  color:#fff;
 }
-
-#alert-box{
-  display:none;
-  background:rgba(255,0,0,0.4);
-  padding:10px;
-  margin:10px 0;
-  border-radius:10px;
-  text-align:center;
-  font-weight:600;
-}
-
-#batas-container,
-#mode-container{
-  background:rgba(255,255,255,0.15);
-  border-radius:12px;
-  padding:15px;
-  margin-top:15px;
-  box-shadow:0 4px 10px rgba(0,0,0,0.3);
-}
-
 button{
   background:#007bff;
   color:#fff;
@@ -138,16 +78,16 @@ button{
   font-weight:600;
 }
 button:hover{background:#3399ff}
-
-#chart-container{
-  margin-top:25px;
-  background:rgba(255,255,255,0.1);
-  padding:15px;
-  border-radius:15px;
+#alert-box{
+  display:none;
+  background:rgba(255,0,0,0.4);
+  padding:10px;
+  margin:10px 0;
+  border-radius:10px;
+  text-align:center;
 }
 </style>
 </head>
-
 <body>
 
 <h1>LED Aquarium Controller</h1>
@@ -155,40 +95,43 @@ button:hover{background:#3399ff}
 
 <div class="dashboard">
 
-  <div class="temp-container">
-    <div class="temp-card">Atas<br><span id="temp1" class="temp-value">-- °C</span></div>
-    <div class="temp-card">Bawah<br><span id="temp2" class="temp-value">-- °C</span></div>
-  </div>
+<!-- ================= SUHU ================= -->
+<div class="temp-container">
+  <div class="temp-card">Atas<br><span id="temp1" class="temp-value">-- °C</span></div>
+  <div class="temp-card">Bawah<br><span id="temp2" class="temp-value">-- °C</span></div>
+</div>
 
-  <div id="alert-box"></div>
+<div id="alert-box"></div>
 
-  <div id="led-controls"></div>
+<!-- ================= MODE ================= -->
+<div style="margin-bottom:20px;">
+  <h3>Mode Operasi</h3>
+  <button onclick="setMode('MANUAL')">Manual</button>
+  <button onclick="setMode('AUTO')">Auto</button>
+  <div id="modeInfo" style="margin-top:5px;"></div>
+</div>
 
-  <div id="batas-container">
-    <h3>Batas Suhu Maksimum</h3>
-    <input type="number" id="batasSuhu" min="30" max="90" value="50"> °C
-    <button id="setBatas">Simpan</button>
-    <div id="batas-info" style="margin-top:8px;color:#ddd;font-size:14px;"></div>
-  </div>
+<!-- ================= AUTO CONFIG ================= -->
+<div id="autoBox" style="display:none;">
+  <h3>Level Maksimum (11:00–12:30)</h3>
+  <div id="autoInputs"></div>
+  <button onclick="saveAuto()">Save Auto Level</button>
+  <hr>
+</div>
 
-  <!-- MODE SECTION -->
-  <div id="mode-container">
-    <h3>Mode Lampu</h3>
-    <label>
-      <input type="radio" name="mode" value="MANUAL" checked> Manual
-    </label>
-    <label style="margin-left:15px;">
-      <input type="radio" name="mode" value="AUTO"> Auto Sunrise / Sunset
-    </label>
-    <br><br>
-    <button id="saveMode">Save Mode</button>
-    <div id="mode-info" style="margin-top:8px;color:#ddd;font-size:14px;"></div>
-  </div>
+<!-- ================= LED MANUAL ================= -->
+<div id="led-controls"></div>
 
-  <div id="chart-container">
-    <h3 style="text-align:center;margin-bottom:10px;">Grafik Suhu Real-Time</h3>
-    <canvas id="tempChart" width="400" height="200"></canvas>
-  </div>
+<!-- ================= BATAS SUHU ================= -->
+<hr>
+<h3>Batas Suhu Maksimum</h3>
+<input type="number" id="batasSuhu" min="30" max="90" value="50"> °C
+<button onclick="setBatas()">Simpan</button>
+
+<!-- ================= GRAFIK ================= -->
+<hr>
+<h3 style="text-align:center;">Grafik Suhu Real-Time</h3>
+<canvas id="tempChart" width="400" height="200"></canvas>
 
 </div>
 
@@ -200,31 +143,90 @@ const ledNames = ["Royal Blue","Blue","Violet","Red","Green","White","Sump","Fan
 const container = document.getElementById('led-controls');
 const statusText = document.getElementById('status');
 
-// ====== Generate slider ======
+let currentMode="MANUAL";
+
+// ================= BUAT SLIDER =================
 ledNames.forEach((name,i)=>{
   const idx=i+1;
   container.innerHTML+=`
-  <div class="slider-container">
-    <label>${name} <input type="number" id="led${idx}-num" min="0" max="100" value="0">%</label>
-    <input type="range" id="led${idx}" min="0" max="100" value="0">
-  </div>`;
+    <div class="slider-container">
+      <label>${name}
+        <input type="number" id="led${idx}-num" min="0" max="100" value="0">%
+      </label>
+      <input type="range" id="led${idx}" min="0" max="100" value="0">
+    </div>`;
 });
 
-// ===== MQTT EVENTS =====
+// ================= AUTO INPUT =================
+const autoDiv=document.getElementById("autoInputs");
+ledNames.forEach((name,i)=>{
+  autoDiv.innerHTML+=`
+    <div style="margin:5px 0;">
+      ${name}
+      <input type="number" id="auto${i}" min="0" max="100" value="100"> %
+    </div>`;
+});
+
+// ================= MODE =================
+function setMode(mode){
+  currentMode=mode;
+  client.publish("set/mode",mode);
+  document.getElementById('modeInfo').innerText="Mode: "+mode;
+  document.getElementById('autoBox').style.display=
+      (mode==="AUTO")?"block":"none";
+}
+
+// ================= SAVE AUTO =================
+function saveAuto(){
+  for(let i=0;i<8;i++){
+    let v=parseInt(document.getElementById('auto'+i).value);
+    if(isNaN(v)) v=0;
+    v=Math.min(100,Math.max(0,v));
+    client.publish("set/autoMax/"+i,v.toString());
+  }
+  alert("Level maksimum disimpan.");
+}
+
+// ================= BATAS SUHU =================
+function setBatas(){
+  const val=parseFloat(document.getElementById('batasSuhu').value);
+  if(val>=30 && val<=90){
+    client.publish("set/batasSuhu",val.toString());
+    alert("Batas suhu dikirim.");
+  }
+}
+
+// ================= SLIDER EVENT =================
+for(let i=1;i<=8;i++){
+  const s=document.getElementById('led'+i);
+  const n=document.getElementById('led'+i+'-num');
+
+  s.addEventListener('input',()=>{
+    if(currentMode==="MANUAL"){
+      n.value=s.value;
+      client.publish('led/'+i,Math.round(s.value*2.55).toString());
+    }
+  });
+
+  n.addEventListener('change',()=>{
+    if(currentMode==="MANUAL"){
+      let v=parseInt(n.value);
+      if(isNaN(v)) v=0;
+      v=Math.min(100,Math.max(0,v));
+      n.value=v;
+      s.value=v;
+      client.publish('led/'+i,Math.round(v*2.55).toString());
+    }
+  });
+}
+
+// ================= MQTT EVENT =================
 client.on('connect',()=>{
-  statusText.innerHTML="✅ Terhubung ke broker MQTT";
-  statusText.style.color="#0f0";
+  statusText.innerHTML="✅ Terhubung ke MQTT";
   for(let i=1;i<=8;i++) client.subscribe('led/'+i);
   client.subscribe('suhu/ntc1');
   client.subscribe('suhu/ntc2');
   client.subscribe('status/suhu');
-  client.subscribe('status/batasSuhu');
-  client.subscribe('mode/status');
-});
-
-client.on('offline',()=>{
-  statusText.innerHTML="❌ Terputus dari MQTT";
-  statusText.style.color="#f00";
 });
 
 client.on('message',(topic,message)=>{
@@ -237,47 +239,40 @@ client.on('message',(topic,message)=>{
     document.getElementById('led'+num+'-num').value=percent;
   }
 
-  if(topic==='mode/status'){
-    document.getElementById('mode-info').innerText='Mode aktif: '+msg;
-    document.querySelector(`input[value="${msg}"]`).checked=true;
+  if(topic==='suhu/ntc1'){
+    document.getElementById('temp1').innerText=parseFloat(msg).toFixed(1)+" °C";
+  }
+
+  if(topic==='suhu/ntc2'){
+    document.getElementById('temp2').innerText=parseFloat(msg).toFixed(1)+" °C";
+  }
+
+  if(topic==='status/suhu'){
+    const box=document.getElementById('alert-box');
+    if(msg.startsWith("TINGGI")){
+      box.innerHTML="⚠️ Suhu Tinggi! Semua LED dimatikan.";
+      box.style.display="block";
+    }else{
+      box.style.display="none";
+    }
   }
 });
 
-// ===== LED CONTROL =====
-for(let i=1;i<=8;i++){
-  const s=document.getElementById('led'+i);
-  const n=document.getElementById('led'+i+'-num');
-
-  s.addEventListener('input',()=>{
-    n.value=s.value;
-    client.publish('led/'+i,Math.round(s.value*2.55).toString());
-  });
-
-  n.addEventListener('change',()=>{
-    let v=parseInt(n.value);
-    if(isNaN(v))v=0;
-    v=Math.max(0,Math.min(100,v));
-    s.value=v;
-    client.publish('led/'+i,Math.round(v*2.55).toString());
-  });
-}
-
-// ===== SET MODE =====
-document.getElementById('saveMode').addEventListener('click',()=>{
-  const selected=document.querySelector('input[name="mode"]:checked').value;
-  client.publish('mode/set',selected);
-  alert('Mode dikirim: '+selected);
-});
-
-// ===== SET BATAS SUHU =====
-document.getElementById('setBatas').addEventListener('click',()=>{
-  const val=parseFloat(document.getElementById('batasSuhu').value);
-  if(val>=30 && val<=90){
-    client.publish('set/batasSuhu',val.toString());
-    alert('Batas suhu dikirim: '+val+' °C');
-  }else{
-    alert('Masukkan nilai 30–90 °C');
-  }
+// ================= CHART =================
+const ctx=document.getElementById('tempChart').getContext('2d');
+const labels=[];
+const data1=[];
+const data2=[];
+new Chart(ctx,{
+  type:'line',
+  data:{
+    labels:labels,
+    datasets:[
+      {label:'Atas',data:data1,borderColor:'red',fill:false},
+      {label:'Bawah',data:data2,borderColor:'blue',fill:false}
+    ]
+  },
+  options:{scales:{y:{min:20,max:70}}}
 });
 
 </script>
