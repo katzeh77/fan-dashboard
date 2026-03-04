@@ -2,8 +2,11 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Reef LED Controller</title>
+<title>Reef Pro LED</title>
+
 <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
 
 <style>
@@ -12,65 +15,59 @@ body{
   font-family:'Inter',sans-serif;
   background:linear-gradient(180deg,#0f2027,#203a43,#2c5364);
   color:white;
-  text-align:center;
 }
 
 .container{
-  max-width:900px;
+  max-width:1100px;
   margin:auto;
   padding:20px;
 }
 
 .card{
-  background:rgba(255,255,255,0.08);
-  backdrop-filter:blur(10px);
+  background:rgba(255,255,255,0.06);
+  backdrop-filter:blur(12px);
   padding:20px;
   margin:15px 0;
   border-radius:20px;
   box-shadow:0 8px 30px rgba(0,0,0,0.4);
 }
 
-h1{margin-top:10px;}
-
-.slider{
-  width:100%;
-}
+h1{text-align:center}
 
 .channel{
   margin:15px 0;
 }
 
+input[type=range]{
+  width:100%;
+  height:8px;
+  border-radius:5px;
+  appearance:none;
+}
+
 .percent{
   font-weight:600;
-  font-size:18px;
 }
 
 button{
-  padding:12px 25px;
-  margin:5px;
+  padding:10px 20px;
   border:none;
-  border-radius:30px;
-  font-weight:600;
+  border-radius:25px;
   cursor:pointer;
-  background:#00c6ff;
-  color:black;
-  transition:0.3s;
+  font-weight:600;
+  margin:5px;
 }
 
-button:hover{
-  background:#00f2fe;
-}
+.modeBtn{background:#00c6ff;color:black}
 
-.toggle{
+.header{
   display:flex;
-  justify-content:center;
-  gap:10px;
-  margin-bottom:15px;
+  justify-content:space-between;
+  align-items:center;
 }
 
-.status{
-  font-size:14px;
-  opacity:0.8;
+.clock{
+  font-size:18px;
 }
 </style>
 </head>
@@ -78,14 +75,18 @@ button:hover{
 <body>
 <div class="container">
 
-<h1>🌊 Reef LED Controller</h1>
-<div class="status" id="status">Connecting...</div>
+<div class="header">
+<h1>🌊 Reef Pro Controller</h1>
+<div>
+<div class="clock" id="clock"></div>
+<div id="weather"></div>
+</div>
+</div>
 
 <div class="card">
-<div class="toggle">
-<button onclick="setMode('manual')">Manual</button>
-<button onclick="setMode('auto')">Auto</button>
-</div>
+<button class="modeBtn" onclick="setMode('manual')">Manual</button>
+<button class="modeBtn" onclick="setMode('auto')">Auto</button>
+<button class="modeBtn" onclick="toggleMoon()">Moonlight</button>
 </div>
 
 <div class="card">
@@ -94,56 +95,113 @@ button:hover{
 </div>
 
 <div class="card">
-<h3>Auto Schedule</h3>
-<p>Sunrise: <input type="time" id="sunrise"></p>
-<p>Sunset: <input type="time" id="sunset"></p>
-<button onclick="saveAuto()">Save Schedule</button>
+<h3>Daily Intensity Graph</h3>
+<canvas id="chart"></canvas>
 </div>
 
 </div>
 
 <script>
+// ===== MQTT =====
 const client = mqtt.connect("wss://broker.emqx.io:8084/mqtt");
 
-client.on("connect", ()=>{
-  document.getElementById("status").innerHTML="🟢 Connected";
-});
-
-client.on("error", ()=>{
-  document.getElementById("status").innerHTML="🔴 Disconnected";
-});
-
-function setMode(mode){
-  client.publish("reef/led/mode",mode);
+function setMode(m){
+  client.publish("reef/led/mode",m);
 }
 
 function send(ch,val){
   client.publish("reef/led/ch"+ch,val);
   document.getElementById("p"+ch).innerHTML=val+"%";
+  updateGraph();
 }
 
-function saveAuto(){
-  let sunrise=document.getElementById("sunrise").value.split(":")[0];
-  let sunset=document.getElementById("sunset").value.split(":")[0];
+// ===== CHANNEL COLOR CONFIG =====
+const channelConfig = [
+{name:"Royal Blue",color:"#1e3cff"},
+{name:"Blue",color:"#00aaff"},
+{name:"Cool White",color:"#ffffff"},
+{name:"Red",color:"#ff2b2b"},
+{name:"Green",color:"#00ff95"},
+{name:"UV",color:"#9400ff"},
+{name:"Violet",color:"#c77dff"},
+{name:"Warm White",color:"#ffd27f"}
+];
 
-  let config={
-    sunrise:parseInt(sunrise),
-    sunset:parseInt(sunset)
-  };
+let values = [0,0,0,0,0,0,0,0];
 
-  client.publish("reef/led/auto/config",JSON.stringify(config));
-}
-
-for(let i=1;i<=8;i++){
+for(let i=0;i<8;i++){
   document.getElementById("channels").innerHTML+=`
   <div class="channel">
-  <label>CH${i}</label>
+  <label>${channelConfig[i].name}</label>
   <input type="range" min="0" max="100" value="0"
-  class="slider" onchange="send(${i},this.value)">
-  <div class="percent" id="p${i}">0%</div>
+  style="background:${channelConfig[i].color}"
+  oninput="values[${i}]=this.value;send(${i+1},this.value)">
+  <div class="percent" id="p${i+1}">0%</div>
   </div>
   `;
 }
+
+// ===== GRAPH =====
+const ctx=document.getElementById('chart');
+const chart=new Chart(ctx,{
+  type:'line',
+  data:{
+    labels:["0","4","8","12","16","20","24"],
+    datasets:[{
+      label:"Intensity %",
+      data:[0,0,50,100,80,20,0],
+      borderColor:"#00f2fe",
+      fill:true,
+      backgroundColor:"rgba(0,242,254,0.2)"
+    }]
+  }
+});
+
+function updateGraph(){
+  chart.data.datasets[0].data=[
+    0,
+    values[0],
+    values[1],
+    values[2],
+    values[3],
+    values[4],
+    0
+  ];
+  chart.update();
+}
+
+// ===== MOONLIGHT =====
+function getMoonPhase(){
+  let now=new Date();
+  let lp=2551443;
+  let new_moon=new Date(1970,0,7,20,35,0);
+  let phase=((now.getTime()-new_moon.getTime())/1000)%lp;
+  return Math.floor((phase/lp)*100);
+}
+
+function toggleMoon(){
+  let phase=getMoonPhase();
+  let intensity=Math.round(phase/4);
+  client.publish("reef/led/ch1",intensity.toString());
+  alert("Moonlight intensity: "+intensity+"%");
+}
+
+// ===== CLOCK =====
+setInterval(()=>{
+  let now=new Date();
+  document.getElementById("clock").innerHTML=
+  now.toLocaleTimeString();
+},1000);
+
+// ===== WEATHER =====
+// GANTI APIKEY DENGAN MILIK ANDA
+const apiKey="ISI_APIKEY_ANDA";
+fetch(`https://api.openweathermap.org/data/2.5/weather?q=Lubuklinggau,id&units=metric&appid=${apiKey}`)
+.then(res=>res.json())
+.then(data=>{
+  document.getElementById("weather").innerHTML=
+  data.weather[0].main+" "+data.main.temp+"°C";
+});
 </script>
 
 </body>
