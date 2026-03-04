@@ -1,44 +1,148 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Reef LED Control</title>
+<meta charset="UTF-8">
+<title>Reef LED Controller</title>
 <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+
 <style>
-body{font-family:Arial;background:#111;color:white;text-align:center}
-.slider{width:80%}
-button{padding:10px;margin:10px}
+body{
+  margin:0;
+  font-family:'Inter',sans-serif;
+  background:linear-gradient(180deg,#0f2027,#203a43,#2c5364);
+  color:white;
+  text-align:center;
+}
+
+.container{
+  max-width:900px;
+  margin:auto;
+  padding:20px;
+}
+
+.card{
+  background:rgba(255,255,255,0.08);
+  backdrop-filter:blur(10px);
+  padding:20px;
+  margin:15px 0;
+  border-radius:20px;
+  box-shadow:0 8px 30px rgba(0,0,0,0.4);
+}
+
+h1{margin-top:10px;}
+
+.slider{
+  width:100%;
+}
+
+.channel{
+  margin:15px 0;
+}
+
+.percent{
+  font-weight:600;
+  font-size:18px;
+}
+
+button{
+  padding:12px 25px;
+  margin:5px;
+  border:none;
+  border-radius:30px;
+  font-weight:600;
+  cursor:pointer;
+  background:#00c6ff;
+  color:black;
+  transition:0.3s;
+}
+
+button:hover{
+  background:#00f2fe;
+}
+
+.toggle{
+  display:flex;
+  justify-content:center;
+  gap:10px;
+  margin-bottom:15px;
+}
+
+.status{
+  font-size:14px;
+  opacity:0.8;
+}
 </style>
 </head>
+
 <body>
+<div class="container">
 
-<h2>Reef Tank LED</h2>
+<h1>🌊 Reef LED Controller</h1>
+<div class="status" id="status">Connecting...</div>
 
+<div class="card">
+<div class="toggle">
 <button onclick="setMode('manual')">Manual</button>
 <button onclick="setMode('auto')">Auto</button>
+</div>
+</div>
 
-<div id="sliders"></div>
+<div class="card">
+<h3>Channel Control</h3>
+<div id="channels"></div>
+</div>
+
+<div class="card">
+<h3>Auto Schedule</h3>
+<p>Sunrise: <input type="time" id="sunrise"></p>
+<p>Sunset: <input type="time" id="sunset"></p>
+<button onclick="saveAuto()">Save Schedule</button>
+</div>
+
+</div>
 
 <script>
 const client = mqtt.connect("wss://broker.emqx.io:8084/mqtt");
 
 client.on("connect", ()=>{
-  console.log("Connected");
+  document.getElementById("status").innerHTML="🟢 Connected";
 });
 
-function setMode(m){
-  client.publish("reef/led/mode",m);
-}
+client.on("error", ()=>{
+  document.getElementById("status").innerHTML="🔴 Disconnected";
+});
 
-for(let i=1;i<=8;i++){
-  document.getElementById("sliders").innerHTML+=
-  `<p>CH${i}
-  <input type="range" min="0" max="100" value="0" class="slider"
-  onchange="send(${i},this.value)">
-  </p>`;
+function setMode(mode){
+  client.publish("reef/led/mode",mode);
 }
 
 function send(ch,val){
   client.publish("reef/led/ch"+ch,val);
+  document.getElementById("p"+ch).innerHTML=val+"%";
+}
+
+function saveAuto(){
+  let sunrise=document.getElementById("sunrise").value.split(":")[0];
+  let sunset=document.getElementById("sunset").value.split(":")[0];
+
+  let config={
+    sunrise:parseInt(sunrise),
+    sunset:parseInt(sunset)
+  };
+
+  client.publish("reef/led/auto/config",JSON.stringify(config));
+}
+
+for(let i=1;i<=8;i++){
+  document.getElementById("channels").innerHTML+=`
+  <div class="channel">
+  <label>CH${i}</label>
+  <input type="range" min="0" max="100" value="0"
+  class="slider" onchange="send(${i},this.value)">
+  <div class="percent" id="p${i}">0%</div>
+  </div>
+  `;
 }
 </script>
 
