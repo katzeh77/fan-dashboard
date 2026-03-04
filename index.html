@@ -1,55 +1,46 @@
-const char webpage[] PROGMEM = R"=====(
 <!DOCTYPE html>
 <html>
 <head>
-<title>Reef Controller</title>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<title>Reef LED Control</title>
+<script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
 <style>
-body{font-family:Arial;background:#111;color:white}
-input{width:60px}
-.card{background:#222;padding:15px;margin:10px;border-radius:10px}
+body{font-family:Arial;background:#111;color:white;text-align:center}
+.slider{width:80%}
+button{padding:10px;margin:10px}
 </style>
 </head>
 <body>
 
-<h2>ESP32 Reef Dashboard</h2>
-<div id="clock"></div>
+<h2>Reef Tank LED</h2>
 
-<div class="card">
-<h3>Mode</h3>
 <button onclick="setMode('manual')">Manual</button>
 <button onclick="setMode('auto')">Auto</button>
-</div>
 
-<div class="card">
-<h3>Suhu</h3>
-Atas: <span id="atas">0</span> °C<br>
-Bawah: <span id="bawah">0</span> °C<br>
-Max: <input id="maxTemp" type="number"> 
-<button onclick="saveTemp()">Save</button>
-</div>
-
-<canvas id="tempChart"></canvas>
+<div id="sliders"></div>
 
 <script>
-setInterval(()=>{
-  document.getElementById("clock").innerHTML =
-    new Date().toLocaleTimeString();
-},1000);
+const client = mqtt.connect("wss://broker.emqx.io:8084/mqtt");
 
-var ctx=document.getElementById("tempChart");
-var chart=new Chart(ctx,{
-  type:'line',
-  data:{
-    labels:[],
-    datasets:[
-      {label:'Atas',data:[],borderColor:'red'},
-      {label:'Bawah',data:[],borderColor:'blue'}
-    ]
-  }
+client.on("connect", ()=>{
+  console.log("Connected");
 });
+
+function setMode(m){
+  client.publish("reef/led/mode",m);
+}
+
+for(let i=1;i<=8;i++){
+  document.getElementById("sliders").innerHTML+=
+  `<p>CH${i}
+  <input type="range" min="0" max="100" value="0" class="slider"
+  onchange="send(${i},this.value)">
+  </p>`;
+}
+
+function send(ch,val){
+  client.publish("reef/led/ch"+ch,val);
+}
 </script>
 
 </body>
 </html>
-)=====";
