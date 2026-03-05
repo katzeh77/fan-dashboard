@@ -2,141 +2,273 @@
 <html lang="id">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Dashboard Kontrol Lampu</title>
   <style>
-    body { background: #1a1a2e; color: white; font-family: Arial; margin: 0; padding: 10px; }
-    .container { max-width: 400px; margin: auto; }
-    .header { background: #0f0f3a; padding: 10px; border-radius: 10px; }
-    .status { display: flex; justify-content: space-between; }
-    .temp { text-align: center; }
-    .mode { display: flex; justify-content: space-around; margin: 10px 0; }
-    .mode button { padding: 10px; border: none; border-radius: 5px; cursor: pointer; }
-    .manual { background: gray; }
-    .auto { background: green; }
-    .channels { display: flex; flex-wrap: wrap; justify-content: space-around; }
-    .channel { margin: 5px; padding: 5px; border-radius: 5px; text-align: center; width: 80px; }
-    input { width: 50px; text-align: center; }
-    .graph { margin-top: 20px; }
-    #chart { height: 200px; }
-    /* Warna channel */
-    .royalblue { background: teal; }
-    .blue { background: blue; }
-    .violet { background: purple; }
-    .red { background: red; }
-    .green { background: green; }
-    .white { background: white; color: black; }
-    .sump { background: lightgray; color: black; }
-    .fan { background: gray; }
+    body {
+      background: #0a1f44;
+      color: white;
+      font-family: Arial, Helvetica, sans-serif;
+      margin: 0;
+      padding: 15px 10px;
+      font-size: 14px;
+      line-height: 1.4;
+    }
+    h1 { font-size: 22px; text-align: center; margin: 10px 0; color: #ffffff; }
+    h2 { font-size: 18px; margin: 15px 0 10px; text-align: center; }
+    h3 { font-size: 16px; margin: 10px 0; text-align: center; }
+    .status-jam { text-align: center; font-size: 18px; margin: 5px 0; }
+    .suhu-container { display: flex; justify-content: space-between; margin: 10px 0; }
+    .suhu-box {
+      background: #1e3a5f;
+      padding: 10px;
+      border-radius: 8px;
+      flex: 1;
+      text-align: center;
+      margin: 0 5px;
+      font-size: 15px;
+    }
+    .mode-container {
+      text-align: center;
+      margin: 15px 0;
+    }
+    .mode-btn {
+      padding: 12px 30px;
+      font-size: 16px;
+      border: none;
+      border-radius: 8px;
+      color: white;
+      cursor: pointer;
+      margin: 0 8px;
+    }
+    .inactive { background: #6c757d; }
+    .active { background: #198754; }
+    .channels-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin: 15px 0;
+    }
+    .channel {
+      padding: 12px 8px;
+      border-radius: 10px;
+      text-align: center;
+      font-weight: bold;
+      min-height: 100px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+    .channel .percent {
+      font-size: 20px;
+      margin: 5px 0;
+    }
+    .channel input {
+      width: 80px;
+      padding: 6px;
+      margin: 5px auto 0;
+      border: 2px solid #495057;
+      border-radius: 6px;
+      background: #212529;
+      color: white;
+      text-align: center;
+      font-size: 14px;
+    }
+    .channel input:focus { border-color: #0d6efd; outline: none; }
+    .sump-fan-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      margin-top: -5px;
+    }
+    .sump-fan-row .channel {
+      flex: 1;
+      min-height: 90px;
+    }
+    .temp-max-row {
+      text-align: center;
+      margin: 20px 0;
+      font-size: 15px;
+    }
+    #tempMax {
+      width: 60px;
+      padding: 8px;
+      background: #212529;
+      color: white;
+      border: 2px solid #495057;
+      border-radius: 6px;
+      text-align: center;
+    }
+    #saveMax {
+      padding: 8px 20px;
+      background: #0d6efd;
+      border: none;
+      border-radius: 6px;
+      color: white;
+      margin-left: 10px;
+      cursor: pointer;
+    }
+    #chart-container {
+      background: #1e3a5f;
+      padding: 10px;
+      border-radius: 10px;
+      margin-top: 20px;
+    }
+    /* Warna channel exact match */
+    .royalblue { background: #20c997; } /* teal-ish */
+    .blue { background: #0d6efd; }
+    .violet { background: #6f42c1; }
+    .red { background: #dc3545; }
+    .green { background: #198754; }
+    .white { background: #f8f9fa; color: #212529; }
+    .sump { background: #adb5bd; color: #212529; }
+    .fan { background: #6c757d; }
   </style>
   <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
-  <div class="container">
-    <!-- Dashboard -->
-    <div class="header">
-      <h2>Dashboard Kontrol Lampu</h2>
-      <div>Status Jam: <span id="time">00:00:00</span></div>
-      <div class="status">
-        <div class="temp">Status Suhu Atas: <span id="tempU">0 °C</span></div>
-        <div class="temp">Status Suhu Bawah: <span id="tempL">0 °C</span></div>
-      </div>
-      <div class="mode">
-        Mode Operasi: <button id="btnManual" class="manual">Manual</button> <button id="btnAuto" class="auto">Otomotis</button>
-      </div>
-      <h3>Kontrol 8 Channel Lampu</h3>
-      <div class="channels">
-        <!-- Channel inputs -->
-        <div class="channel royalblue">Royal Blue <div id="int0">0%</div> <input type="text" id="inp0" placeholder="0-100"></div>
-        <div class="channel blue">Blue <div id="int1">0%</div> <input type="text" id="inp1" placeholder="0-100"></div>
-        <div class="channel violet">Violet <div id="int2">0%</div> <input type="text" id="inp2" placeholder="0-100"></div>
-        <div class="channel red">Red <div id="int3">0%</div> <input type="text" id="inp3" placeholder="0-100"></div>
-        <div class="channel green">Green <div id="int4">0%</div> <input type="text" id="inp4" placeholder="0-100"></div>
-        <div class="channel white">White <div id="int5">0%</div> <input type="text" id="inp5" placeholder="0-100"></div>
-        <div class="channel sump">Sump <div id="int6">0%</div> <input type="text" id="inp6" placeholder="0-100"></div>
-        <div class="channel fan">Fan <div id="int7">0%</div> <input type="text" id="inp7" placeholder="0-100"></div>
-      </div>
-      <div>Batas Maksimal Suhu <input type="text" id="tempMax" value="32"> °C <button id="saveMax">Save</button></div>
-      <div class="graph">
-        <h3>Grafik Suhu per 30 Detik</h3>
-        <canvas id="chart"></canvas>
-      </div>
-    </div>
+  <h1>Dashboard Kontrol Lampu</h1>
 
-    <!-- Pengaturan Otomatis (Halaman terpisah atau modal, tapi untuk simple vertikal) -->
-    <div class="header" style="margin-top: 20px;">
-      <h2>Pengaturan Waktu Otomatis</h2>
-      <div class="channels">
-        <!-- Auto inputs: Start, Peak, End -->
-        <div>Royal Blue: Start <input id="start0" value="08:00"> Peak <input id="peak0" value="12:00"> End <input id="end0" value="20:00"></div>
-        <div>Blue: Start <input id="start1" value="08:00"> Peak <input id="peak1" value="12:00"> End <input id="end1" value="10:00"></div>
-        <!-- Tambah untuk channel 2-7 mirip screenshot -->
-        <div>Violet: Start <input id="start2" value="00:00"> Peak <input id="peak2" value="10:00"> End <input id="end2" value="10:00"></div>
-        <div>Red: Start <input id="start3" value="09:00"> Peak <input id="peak3" value="10:00"> End <input id="end3" value="10:00"></div>
-        <div>Green: Start <input id="start4" value="08:00"> Peak <input id="peak4" value="10:00"> End <input id="end4" value="16:00"></div>
-        <div>White: Start <input id="start5" value="09:00"> Peak <input id="peak5" value="10:00"> End <input id="end5" value="16:00"></div>
-        <div>Sump: Start <input id="start6" value="11:00"> Peak <input id="peak6" value="11:00"> End <input id="end6" value="12:00"></div>
-        <div>Fan: Start <input id="start7" value="08:00"> Peak <input id="peak7" value="10:00"> End <input id="end7" value="10:00"></div>
-      </div>
-      <button id="saveAuto">Save Otomatis</button>
+  <div class="status-jam">Status Jam: <span id="time">00:00:00</span></div>
+
+  <div class="suhu-container">
+    <div class="suhu-box">Status Suhu Atas: <span id="tempU">0</span> °C</div>
+    <div class="suhu-box">Status Suhu Bawah: <span id="tempL">0</span> °C</div>
+  </div>
+
+  <div class="mode-container">
+    Mode Operasi:<br>
+    <button id="btnManual" class="mode-btn inactive">Manual</button>
+    <button id="btnAuto" class="mode-btn active">Otomotis</button>
+  </div>
+
+  <h2>Kontrol 8 Channel Lampu</h2>
+  <div class="channels-grid">
+    <div class="channel royalblue">
+      Royal Blue
+      <div class="percent" id="int0">0%</div>
+      <input type="text" id="inp0" placeholder="0-100">
     </div>
+    <div class="channel blue">
+      Blue
+      <div class="percent" id="int1">0%</div>
+      <input type="text" id="inp1" placeholder="0-100">
+    </div>
+    <div class="channel violet">
+      Violet
+      <div class="percent" id="int2">0%</div>
+      <input type="text" id="inp2" placeholder="0-100">
+    </div>
+    <div class="channel red">
+      Red
+      <div class="percent" id="int3">0%</div>
+      <input type="text" id="inp3" placeholder="0-100">
+    </div>
+    <div class="channel green">
+      Green
+      <div class="percent" id="int4">0%</div>
+      <input type="text" id="inp4" placeholder="0-100">
+    </div>
+    <div class="channel white">
+      White
+      <div class="percent" id="int5">0%</div>
+      <input type="text" id="inp5" placeholder="0-100">
+    </div>
+  </div>
+
+  <div class="sump-fan-row">
+    <div class="channel sump">
+      Sump
+      <div class="percent" id="int6">0%</div>
+      <input type="text" id="inp6" placeholder="0-100">
+    </div>
+    <div class="channel fan">
+      Fan
+      <div class="percent" id="int7">0%</div>
+      <input type="text" id="inp7" placeholder="0-100">
+    </div>
+  </div>
+
+  <div class="temp-max-row">
+    Batas Maksimal Suhu
+    <input type="text" id="tempMax" value="32"> °C
+    <button id="saveMax">Save</button>
+  </div>
+
+  <h3>Grafik Suhu per 30 Detik</h3>
+  <div id="chart-container">
+    <canvas id="chart"></canvas>
   </div>
 
   <script>
     const client = mqtt.connect('ws://broker.hivemq.com:8000/mqtt');
-    let tempDataU = [], tempDataL = [], timeLabels = [];
-    let chart = new Chart(document.getElementById('chart'), {
-      type: 'line',
-      data: { labels: timeLabels, datasets: [{ label: 'Suhu Atas', data: tempDataU, borderColor: 'red' }, { label: 'Suhu Bawah', data: tempDataL, borderColor: 'blue' }] },
-      options: { scales: { y: { min: 20, max: 35 } } }
-    });
+    let chart;
+    let tempDataU = [], tempDataL = [], labels = [];
+
+    function initChart() {
+      const ctx = document.getElementById('chart').getContext('2d');
+      chart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [
+            { label: 'Suhu Atas', data: tempDataU, borderColor: 'red', fill: false },
+            { label: 'Suhu Bawah', data: tempDataL, borderColor: 'blue', fill: false }
+          ]
+        },
+        options: {
+          responsive: true,
+          scales: { y: { min: 20, max: 35, ticks: { color: 'white' } }, x: { ticks: { color: 'white' } } },
+          plugins: { legend: { labels: { color: 'white' } } }
+        }
+      });
+    }
 
     client.on('connect', () => {
       client.subscribe('device/status/#');
     });
 
     client.on('message', (topic, message) => {
-      let msg = message.toString();
-      if (topic === 'device/status/time') document.getElementById('time').innerText = msg;
-      else if (topic === 'device/status/temp_upper') {
-        document.getElementById('tempU').innerText = msg + ' °C';
+      const msg = message.toString();
+      if (topic === 'device/status/time') {
+        document.getElementById('time').innerText = msg;
+      } else if (topic === 'device/status/temp_upper') {
+        document.getElementById('tempU').innerText = msg;
         tempDataU.push(parseFloat(msg));
-        if (tempDataU.length > 10) tempDataU.shift();
+        if (tempDataU.length > 20) tempDataU.shift();
       } else if (topic === 'device/status/temp_lower') {
-        document.getElementById('tempL').innerText = msg + ' °C';
+        document.getElementById('tempL').innerText = msg;
         tempDataL.push(parseFloat(msg));
-        if (tempDataL.length > 10) tempDataL.shift();
+        if (tempDataL.length > 20) tempDataL.shift();
       } else if (topic === 'device/status/mode') {
-        document.getElementById('btnManual').style.background = (msg === 'manual') ? 'green' : 'gray';
-        document.getElementById('btnAuto').style.background = (msg === 'auto') ? 'green' : 'gray';
+        if (msg === 'manual') {
+          document.getElementById('btnManual').classList.remove('active'); document.getElementById('btnManual').classList.add('inactive');
+          document.getElementById('btnAuto').classList.remove('inactive'); document.getElementById('btnAuto').classList.add('active');
+        } else {
+          document.getElementById('btnManual').classList.add('active'); document.getElementById('btnManual').classList.remove('inactive');
+          document.getElementById('btnAuto').classList.add('inactive'); document.getElementById('btnAuto').classList.remove('active');
+        }
       } else if (topic.startsWith('device/status/channel/')) {
-        let ch = topic.split('/')[3];
+        const ch = topic.split('/')[3];
         document.getElementById('int' + ch).innerText = msg + '%';
       }
-      timeLabels.push(new Date().toLocaleTimeString());
-      if (timeLabels.length > 10) timeLabels.shift();
-      chart.update();
+      labels.push(new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'}));
+      if (labels.length > 20) labels.shift();
+      if (chart) chart.update();
     });
 
-    // Event buttons
-    document.getElementById('btnManual').addEventListener('click', () => client.publish('device/set/mode', 'manual'));
-    document.getElementById('btnAuto').addEventListener('click', () => client.publish('device/set/mode', 'auto'));
-    document.getElementById('saveMax').addEventListener('click', () => client.publish('device/set/temp_max', document.getElementById('tempMax').value));
-    document.getElementById('saveAuto').addEventListener('click', () => {
-      for (let i = 0; i < 8; i++) {
-        client.publish(device/set/auto/channel/\( {i}/start, document.getElementById(start \){i}).value);
-        client.publish(device/set/auto/channel/\( {i}/peak, document.getElementById(peak \){i}).value);
-        client.publish(device/set/auto/channel/\( {i}/end, document.getElementById(end \){i}).value);
-      }
-    });
+    document.getElementById('btnManual').onclick = () => client.publish('device/set/mode', 'manual');
+    document.getElementById('btnAuto').onclick = () => client.publish('device/set/mode', 'auto');
+    document.getElementById('saveMax').onclick = () => client.publish('device/set/temp_max', document.getElementById('tempMax').value);
 
-    // Input intensity (manual)
     for (let i = 0; i < 8; i++) {
-      document.getElementById(inp${i}).addEventListener('change', (e) => {
+      document.getElementById('inp' + i).onchange = (e) => {
         client.publish(device/set/channel/${i}/intensity, e.target.value);
-      });
+      };
     }
+
+    initChart();
   </script>
 </body>
 </html>
