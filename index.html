@@ -1,274 +1,104 @@
-<!DOCTYPE html>
-<html lang="id">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Dashboard Kontrol Lampu</title>
-  <style>
-    body {
-      background: #0a1f44;
-      color: white;
-      font-family: Arial, Helvetica, sans-serif;
-      margin: 0;
-      padding: 15px 10px;
-      font-size: 14px;
-      line-height: 1.4;
-    }
-    h1 { font-size: 22px; text-align: center; margin: 10px 0; color: #ffffff; }
-    h2 { font-size: 18px; margin: 15px 0 10px; text-align: center; }
-    h3 { font-size: 16px; margin: 10px 0; text-align: center; }
-    .status-jam { text-align: center; font-size: 18px; margin: 5px 0; }
-    .suhu-container { display: flex; justify-content: space-between; margin: 10px 0; }
-    .suhu-box {
-      background: #1e3a5f;
-      padding: 10px;
-      border-radius: 8px;
-      flex: 1;
-      text-align: center;
-      margin: 0 5px;
-      font-size: 15px;
-    }
-    .mode-container {
-      text-align: center;
-      margin: 15px 0;
-    }
-    .mode-btn {
-      padding: 12px 30px;
-      font-size: 16px;
-      border: none;
-      border-radius: 8px;
-      color: white;
-      cursor: pointer;
-      margin: 0 8px;
-    }
-    .inactive { background: #6c757d; }
-    .active { background: #198754; }
-    .channels-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 12px;
-      margin: 15px 0;
-    }
-    .channel {
-      padding: 12px 8px;
-      border-radius: 10px;
-      text-align: center;
-      font-weight: bold;
-      min-height: 100px;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-    }
-    .channel .percent {
-      font-size: 20px;
-      margin: 5px 0;
-    }
-    .channel input {
-      width: 80px;
-      padding: 6px;
-      margin: 5px auto 0;
-      border: 2px solid #495057;
-      border-radius: 6px;
-      background: #212529;
-      color: white;
-      text-align: center;
-      font-size: 14px;
-    }
-    .channel input:focus { border-color: #0d6efd; outline: none; }
-    .sump-fan-row {
-      display: flex;
-      justify-content: space-between;
-      gap: 12px;
-      margin-top: -5px;
-    }
-    .sump-fan-row .channel {
-      flex: 1;
-      min-height: 90px;
-    }
-    .temp-max-row {
-      text-align: center;
-      margin: 20px 0;
-      font-size: 15px;
-    }
-    #tempMax {
-      width: 60px;
-      padding: 8px;
-      background: #212529;
-      color: white;
-      border: 2px solid #495057;
-      border-radius: 6px;
-      text-align: center;
-    }
-    #saveMax {
-      padding: 8px 20px;
-      background: #0d6efd;
-      border: none;
-      border-radius: 6px;
-      color: white;
-      margin-left: 10px;
-      cursor: pointer;
-    }
-    #chart-container {
-      background: #1e3a5f;
-      padding: 10px;
-      border-radius: 10px;
-      margin-top: 20px;
-    }
-    /* Warna channel exact match */
-    .royalblue { background: #20c997; } /* teal-ish */
-    .blue { background: #0d6efd; }
-    .violet { background: #6f42c1; }
-    .red { background: #dc3545; }
-    .green { background: #198754; }
-    .white { background: #f8f9fa; color: #212529; }
-    .sump { background: #adb5bd; color: #212529; }
-    .fan { background: #6c757d; }
-  </style>
-  <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-</head>
-<body>
-  <h1>Dashboard Kontrol Lampu</h1>
+<!-- ... (bagian <head> dan <style> sama seperti versi sebelumnya, tambahkan ini di akhir <style>) -->
+<style>
+  /* Tambahan untuk pengaturan otomatis */
+  #auto-settings { display: none; background: #1e3a5f; padding: 15px; border-radius: 10px; margin-top: 20px; }
+  .auto-header { text-align: center; font-size: 18px; margin-bottom: 10px; }
+  .auto-table { display: grid; grid-template-columns: auto 1fr 1fr 1fr; gap: 8px; font-size: 14px; }
+  .auto-header-row { font-weight: bold; background: #0a1f44; padding: 8px; text-align: center; border-radius: 6px; }
+  .auto-channel { display: contents; }
+  .auto-channel-name { padding: 8px; border-radius: 50%; width: 20px; height: 20px; text-align: center; line-height: 20px; font-size: 12px; margin-right: 8px; }
+  .auto-input { padding: 6px; width: 70px; background: #212529; color: white; border: 1px solid #495057; border-radius: 4px; text-align: center; }
+  #toggleAuto { display: block; margin: 15px auto; padding: 10px 20px; background: #0d6efd; border: none; border-radius: 6px; color: white; font-size: 16px; cursor: pointer; }
+</style>
 
-  <div class="status-jam">Status Jam: <span id="time">00:00:00</span></div>
+<!-- Di body, setelah <div id="chart-container"> ... </div> tambahkan ini -->
+<button id="toggleAuto">Pengaturan Waktu Otomatis</button>
 
-  <div class="suhu-container">
-    <div class="suhu-box">Status Suhu Atas: <span id="tempU">0</span> °C</div>
-    <div class="suhu-box">Status Suhu Bawah: <span id="tempL">0</span> °C</div>
-  </div>
-
-  <div class="mode-container">
-    Mode Operasi:<br>
-    <button id="btnManual" class="mode-btn inactive">Manual</button>
-    <button id="btnAuto" class="mode-btn active">Otomotis</button>
-  </div>
-
-  <h2>Kontrol 8 Channel Lampu</h2>
-  <div class="channels-grid">
-    <div class="channel royalblue">
-      Royal Blue
-      <div class="percent" id="int0">0%</div>
-      <input type="text" id="inp0" placeholder="0-100">
+<div id="auto-settings">
+  <div class="auto-header">Pengaturan Waktu Otomatis<br>8 Channel Lampu</div>
+  
+  <div class="auto-table">
+    <div class="auto-header-row"></div>
+    <div class="auto-header-row">Start</div>
+    <div class="auto-header-row">Peak</div>
+    <div class="auto-header-row">End</div>
+    
+    <div class="auto-channel">
+      <div style="background: #20c997;" class="auto-channel-name">●</div> Royal Blue
+      <input type="text" id="start0" class="auto-input" value="08:00">
+      <input type="text" id="peak0" class="auto-input" value="12:00">
+      <input type="text" id="end0" class="auto-input" value="20:00">
     </div>
-    <div class="channel blue">
-      Blue
-      <div class="percent" id="int1">0%</div>
-      <input type="text" id="inp1" placeholder="0-100">
+    
+    <div class="auto-channel">
+      <div style="background: #0d6efd;" class="auto-channel-name">●</div> Blue
+      <input type="text" id="start1" class="auto-input" value="08:00">
+      <input type="text" id="peak1" class="auto-input" value="12:00">
+      <input type="text" id="end1" class="auto-input" value="10:00">
     </div>
-    <div class="channel violet">
-      Violet
-      <div class="percent" id="int2">0%</div>
-      <input type="text" id="inp2" placeholder="0-100">
+    
+    <div class="auto-channel">
+      <div style="background: #6f42c1;" class="auto-channel-name">●</div> Violet
+      <input type="text" id="start2" class="auto-input" value="00:00">
+      <input type="text" id="peak2" class="auto-input" value="10:00">
+      <input type="text" id="end2" class="auto-input" value="10:00">
     </div>
-    <div class="channel red">
-      Red
-      <div class="percent" id="int3">0%</div>
-      <input type="text" id="inp3" placeholder="0-100">
+    
+    <div class="auto-channel">
+      <div style="background: #dc3545;" class="auto-channel-name">●</div> Red
+      <input type="text" id="start3" class="auto-input" value="09:00">
+      <input type="text" id="peak3" class="auto-input" value="10:00">
+      <input type="text" id="end3" class="auto-input" value="10:00">
     </div>
-    <div class="channel green">
-      Green
-      <div class="percent" id="int4">0%</div>
-      <input type="text" id="inp4" placeholder="0-100">
+    
+    <div class="auto-channel">
+      <div style="background: #198754;" class="auto-channel-name">●</div> Green
+      <input type="text" id="start4" class="auto-input" value="08:00">
+      <input type="text" id="peak4" class="auto-input" value="10:00">
+      <input type="text" id="end4" class="auto-input" value="16:00">
     </div>
-    <div class="channel white">
-      White
-      <div class="percent" id="int5">0%</div>
-      <input type="text" id="inp5" placeholder="0-100">
+    
+    <div class="auto-channel">
+      <div style="background: #f8f9fa; color:#000;" class="auto-channel-name">●</div> White
+      <input type="text" id="start5" class="auto-input" value="09:00">
+      <input type="text" id="peak5" class="auto-input" value="10:00">
+      <input type="text" id="end5" class="auto-input" value="16:00">
+    </div>
+    
+    <div class="auto-channel">
+      <div style="background: #adb5bd; color:#000;" class="auto-channel-name">●</div> Sump
+      <input type="text" id="start6" class="auto-input" value="11:00">
+      <input type="text" id="peak6" class="auto-input" value="11:00">
+      <input type="text" id="end6" class="auto-input" value="12:00">
+    </div>
+    
+    <div class="auto-channel">
+      <div style="background: #6c757d;" class="auto-channel-name">●</div> Fan
+      <input type="text" id="start7" class="auto-input" value="08:00">
+      <input type="text" id="peak7" class="auto-input" value="10:00">
+      <input type="text" id="end7" class="auto-input" value="10:00">
     </div>
   </div>
 
-  <div class="sump-fan-row">
-    <div class="channel sump">
-      Sump
-      <div class="percent" id="int6">0%</div>
-      <input type="text" id="inp6" placeholder="0-100">
-    </div>
-    <div class="channel fan">
-      Fan
-      <div class="percent" id="int7">0%</div>
-      <input type="text" id="inp7" placeholder="0-100">
-    </div>
-  </div>
+  <button id="saveAuto" style="display: block; margin: 20px auto; padding: 10px 30px; background: #198754; border: none; border-radius: 6px; color: white; font-size: 16px; cursor: pointer;">Save Pengaturan Otomatis</button>
+</div>
 
-  <div class="temp-max-row">
-    Batas Maksimal Suhu
-    <input type="text" id="tempMax" value="32"> °C
-    <button id="saveMax">Save</button>
-  </div>
+<!-- Di akhir <script>, tambahkan ini -->
+<script>
+  // ... (kode MQTT dan chart sebelumnya tetap)
 
-  <h3>Grafik Suhu per 30 Detik</h3>
-  <div id="chart-container">
-    <canvas id="chart"></canvas>
-  </div>
+  document.getElementById('toggleAuto').onclick = function() {
+    var settings = document.getElementById('auto-settings');
+    settings.style.display = (settings.style.display === 'block') ? 'none' : 'block';
+    this.innerText = (settings.style.display === 'block') ? 'Sembunyikan Pengaturan' : 'Pengaturan Waktu Otomatis';
+  };
 
-  <script>
-    const client = mqtt.connect('ws://broker.hivemq.com:8000/mqtt');
-    let chart;
-    let tempDataU = [], tempDataL = [], labels = [];
-
-    function initChart() {
-      const ctx = document.getElementById('chart').getContext('2d');
-      chart = new Chart(ctx, {
-        type: 'line',
-        data: {
-          labels: labels,
-          datasets: [
-            { label: 'Suhu Atas', data: tempDataU, borderColor: 'red', fill: false },
-            { label: 'Suhu Bawah', data: tempDataL, borderColor: 'blue', fill: false }
-          ]
-        },
-        options: {
-          responsive: true,
-          scales: { y: { min: 20, max: 35, ticks: { color: 'white' } }, x: { ticks: { color: 'white' } } },
-          plugins: { legend: { labels: { color: 'white' } } }
-        }
-      });
-    }
-
-    client.on('connect', () => {
-      client.subscribe('device/status/#');
-    });
-
-    client.on('message', (topic, message) => {
-      const msg = message.toString();
-      if (topic === 'device/status/time') {
-        document.getElementById('time').innerText = msg;
-      } else if (topic === 'device/status/temp_upper') {
-        document.getElementById('tempU').innerText = msg;
-        tempDataU.push(parseFloat(msg));
-        if (tempDataU.length > 20) tempDataU.shift();
-      } else if (topic === 'device/status/temp_lower') {
-        document.getElementById('tempL').innerText = msg;
-        tempDataL.push(parseFloat(msg));
-        if (tempDataL.length > 20) tempDataL.shift();
-      } else if (topic === 'device/status/mode') {
-        if (msg === 'manual') {
-          document.getElementById('btnManual').classList.remove('active'); document.getElementById('btnManual').classList.add('inactive');
-          document.getElementById('btnAuto').classList.remove('inactive'); document.getElementById('btnAuto').classList.add('active');
-        } else {
-          document.getElementById('btnManual').classList.add('active'); document.getElementById('btnManual').classList.remove('inactive');
-          document.getElementById('btnAuto').classList.add('inactive'); document.getElementById('btnAuto').classList.remove('active');
-        }
-      } else if (topic.startsWith('device/status/channel/')) {
-        const ch = topic.split('/')[3];
-        document.getElementById('int' + ch).innerText = msg + '%';
-      }
-      labels.push(new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'}));
-      if (labels.length > 20) labels.shift();
-      if (chart) chart.update();
-    });
-
-    document.getElementById('btnManual').onclick = () => client.publish('device/set/mode', 'manual');
-    document.getElementById('btnAuto').onclick = () => client.publish('device/set/mode', 'auto');
-    document.getElementById('saveMax').onclick = () => client.publish('device/set/temp_max', document.getElementById('tempMax').value);
-
+  document.getElementById('saveAuto').onclick = function() {
     for (let i = 0; i < 8; i++) {
-      document.getElementById('inp' + i).onchange = (e) => {
-        client.publish(device/set/channel/${i}/intensity, e.target.value);
-      };
+      client.publish(device/set/auto/channel/\( {i}/start, document.getElementById(start \){i}).value);
+      client.publish(device/set/auto/channel/\( {i}/peak, document.getElementById(peak \){i}).value);
+      client.publish(device/set/auto/channel/\( {i}/end, document.getElementById(end \){i}).value);
     }
-
-    initChart();
-  </script>
-</body>
-</html>
+    alert('Pengaturan waktu otomatis tersimpan!');
+  };
+</script>
