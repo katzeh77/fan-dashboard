@@ -1,23 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Reef Controller PRO</title>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+
+<style>
+body { background:#0b1d1f; color:white; font-family:Arial; }
+.top { background:red; padding:10px; }
+canvas { background:#021416; margin-top:10px; }
+</style>
+
+</head>
+<body>
+
+<div class="top">
+<button onclick="savePreset('day')">Save Day</button>
+<button onclick="savePreset('night')">Save Night</button>
+<button onclick="loadPreset('day')">Load Day</button>
+<button onclick="loadPreset('night')">Load Night</button>
+</div>
+
+<canvas id="chart"></canvas>
+
+<p id="info">Klik titik → drag naik turun</p>
+
+<label>Max Temp:</label>
+<input id="maxTemp" type="number">
+<button onclick="setTemp()">Set</button>
+
+<script>
+
+// ================= MQTT =================
 const client = mqtt.connect("wss://broker.emqx.io:8084/mqtt");
 
 let schedule = Array(24).fill().map(()=>Array(8).fill(0));
-
 let selectedChannel = 0;
 let selectedHour = 0;
 
-// warna channel
 const colors = [
-  "#0033ff", // royal blue
-  "#00ccff", // blue
-  "#9900ff", // violet
-  "#ff0000", // red
-  "#00ff00", // green
-  "#ffffff", // white
-  "#cc00ff", // sump
-  "#ffaa00"  // fan
+"#0033ff","#00ccff","#9900ff","#ff0000",
+"#00ff00","#ffffff","#cc00ff","#ffaa00"
 ];
 
-// ================= MQTT =================
 client.on("connect",()=>{
   console.log("MQTT Connected");
 });
@@ -48,26 +75,20 @@ const chart = new Chart(ctx, {
       intersect: true
     },
     scales: {
-      y: {
-        min: 0,
-        max: 100
-      }
+      y: { min:0, max:100 }
     },
     onClick: (evt, elements) => {
       if(elements.length > 0){
-        const i = elements[0].index;
-        const d = elements[0].datasetIndex;
-
-        selectedHour = i;
-        selectedChannel = d;
-
-        console.log("Edit Hour:", i, "Channel:", d);
+        selectedHour = elements[0].index;
+        selectedChannel = elements[0].datasetIndex;
+        document.getElementById("info").innerText =
+          `Edit CH${selectedChannel+1} jam ${selectedHour}`;
       }
     }
   }
 });
 
-// ================= UPDATE GRAPH =================
+// ================= UPDATE =================
 function redraw(){
   chart.data.datasets.forEach((ds,i)=>{
     ds.data = schedule.map(h=>h[i]);
@@ -75,30 +96,25 @@ function redraw(){
   chart.update();
 }
 
-// ================= DRAG CHANGE =================
-ctx.addEventListener("mousedown", startDraw);
-ctx.addEventListener("mousemove", drawMove);
-ctx.addEventListener("mouseup", stopDraw);
-
+// ================= DRAG =================
 let drawing = false;
 
-function startDraw(e){
+ctx.addEventListener("mousedown", e=>{
   drawing = true;
   updateValue(e);
-}
+});
 
-function drawMove(e){
-  if(!drawing) return;
-  updateValue(e);
-}
+ctx.addEventListener("mousemove", e=>{
+  if(drawing) updateValue(e);
+});
 
-function stopDraw(){
+ctx.addEventListener("mouseup", ()=>{
   drawing = false;
-}
+});
 
 function updateValue(e){
   const rect = ctx.getBoundingClientRect();
-  const y = e.clientY - rect.top;
+  let y = e.clientY - rect.top;
 
   let value = 100 - (y / rect.height * 100);
   value = Math.max(0, Math.min(100, value));
@@ -128,3 +144,8 @@ function setTemp(){
   let t = document.getElementById("maxTemp").value;
   client.publish("reef/maxtemp", JSON.stringify({maxTemp:parseFloat(t)}));
 }
+
+</script>
+
+</body>
+</html>
