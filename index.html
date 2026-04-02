@@ -11,6 +11,11 @@
 body { background:#0b1d1f; color:white; font-family:Arial; }
 .top { background:red; padding:10px; }
 canvas { background:#021416; margin-top:10px; }
+
+button {
+  margin:5px;
+  padding:8px;
+}
 </style>
 
 </head>
@@ -23,9 +28,9 @@ canvas { background:#021416; margin-top:10px; }
 <button onclick="loadPreset('night')">Load Night</button>
 </div>
 
-<canvas id="chart"></canvas>
+<canvas id="chart" height="120"></canvas>
 
-<p id="info">Klik titik → drag naik turun</p>
+<p id="info">Klik grafik untuk pilih channel → drag untuk ubah</p>
 
 <label>Max Temp:</label>
 <input id="maxTemp" type="number">
@@ -41,14 +46,21 @@ let selectedChannel = 0;
 let selectedHour = 0;
 
 const colors = [
-"#0033ff","#00ccff","#9900ff","#ff0000",
-"#00ff00","#ffffff","#cc00ff","#ffaa00"
+"#0033ff", // Royal Blue
+"#00ccff", // Blue
+"#9900ff", // Violet
+"#ff0000", // Red
+"#00ff00", // Green
+"#ffffff", // White
+"#cc00ff", // Sump
+"#ffaa00"  // Fan
 ];
 
 client.on("connect",()=>{
   console.log("MQTT Connected");
 });
 
+// kirim ke ESP32
 function send(){
   client.publish("reef/schedule", JSON.stringify({data:schedule}));
 }
@@ -65,30 +77,30 @@ const chart = new Chart(ctx, {
       borderColor: c,
       data: schedule.map(h=>h[i]),
       tension: 0.3,
-      pointRadius: 5
+      pointRadius: 4
     }))
   },
   options: {
     responsive: true,
-    interaction: {
-      mode: 'nearest',
-      intersect: true
+    plugins:{
+      legend:{ labels:{ color:"white" } }
     },
     scales: {
-      y: { min:0, max:100 }
+      x:{ ticks:{ color:"white" }},
+      y:{ min:0, max:100, ticks:{ color:"white" }}
     },
     onClick: (evt, elements) => {
       if(elements.length > 0){
-        selectedHour = elements[0].index;
         selectedChannel = elements[0].datasetIndex;
+
         document.getElementById("info").innerText =
-          `Edit CH${selectedChannel+1} jam ${selectedHour}`;
+          `Channel dipilih: CH${selectedChannel+1} → drag di grafik`;
       }
     }
   }
 });
 
-// ================= UPDATE =================
+// ================= UPDATE GRAPH =================
 function redraw(){
   chart.data.datasets.forEach((ds,i)=>{
     ds.data = schedule.map(h=>h[i]);
@@ -96,7 +108,7 @@ function redraw(){
   chart.update();
 }
 
-// ================= DRAG =================
+// ================= DRAG SYSTEM (FIX AKURAT) =================
 let drawing = false;
 
 ctx.addEventListener("mousedown", e=>{
@@ -112,14 +124,26 @@ ctx.addEventListener("mouseup", ()=>{
   drawing = false;
 });
 
+// ================= INTI PERBAIKAN =================
 function updateValue(e){
   const rect = ctx.getBoundingClientRect();
+
+  let x = e.clientX - rect.left;
   let y = e.clientY - rect.top;
 
+  // 🔥 FIX: hitung jam dari posisi X (AKURAT)
+  let hour = Math.floor(x / rect.width * 24);
+  hour = Math.max(0, Math.min(23, hour));
+
+  // nilai %
   let value = 100 - (y / rect.height * 100);
   value = Math.max(0, Math.min(100, value));
 
-  schedule[selectedHour][selectedChannel] = value;
+  schedule[hour][selectedChannel] = value;
+  selectedHour = hour;
+
+  document.getElementById("info").innerText =
+    `CH${selectedChannel+1} | Jam ${hour} = ${value.toFixed(0)}%`;
 
   redraw();
   send();
