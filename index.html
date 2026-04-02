@@ -1,201 +1,37 @@
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="UTF-8">
-<title>Reef Controller PRO</title>
-
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
-
-<style>
-body { background:#0b1d1f; color:white; font-family:Arial; }
-.top { background:red; padding:10px; }
-
-canvas {
-  background:#021416;
-  margin-top:10px;
-  cursor: crosshair;
-}
-
-button {
-  margin:5px;
-  padding:8px;
-}
-
-.active {
-  outline: 2px solid yellow;
-}
-</style>
-
-</head>
-<body>
-
-<div class="top">
-<button onclick="savePreset('day')">Save Day</button>
-<button onclick="savePreset('night')">Save Night</button>
-<button onclick="loadPreset('day')">Load Day</button>
-<button onclick="loadPreset('night')">Load Night</button>
-</div>
-
-<canvas id="chart" height="120"></canvas>
-
-<p id="info">Klik garis untuk pilih channel → drag untuk ubah</p>
-
-<label>Max Temp:</label>
-<input id="maxTemp" type="number">
-<button onclick="setTemp()">Set</button>
-
-<script>
-
-// ================= MQTT =================
-const client = mqtt.connect("wss://broker.emqx.io:8084/mqtt");
-
-let schedule = Array(24).fill().map(()=>Array(8).fill(0));
-let selectedChannel = 0;
-let selectedHour = 0;
-
-const colors = [
-"#0033ff", // Royal Blue
-"#00ccff", // Blue
-"#9900ff", // Violet
-"#ff0000", // Red
-"#00ff00", // Green
-"#ffffff", // White
-"#cc00ff", // Sump
-"#ffaa00"  // Fan
-];
-
-client.on("connect",()=>{
-  console.log("MQTT Connected");
-});
-
-// kirim ke ESP32
-function send(){
-  client.publish("reef/schedule", JSON.stringify({data:schedule}));
-}
-
-// ================= CHART =================
-const ctx = document.getElementById("chart");
-
-const chart = new Chart(ctx, {
-  type: 'line',
-  data: {
-    labels: [...Array(24).keys()],
-    datasets: colors.map((c,i)=>({
-      label: "CH"+(i+1),
-      borderColor: c,
-      data: schedule.map(h=>h[i]),
-      tension: 0.3,
-      pointRadius: 4,
-      borderWidth: 2
-    }))
-  },
-  options: {
-    responsive: true,
-    plugins:{
-      legend:{ labels:{ color:"white" } }
-    },
-    scales: {
-      x:{ ticks:{ color:"white" }},
-      y:{ min:0, max:100, ticks:{ color:"white" }}
-    },
-    onClick: (evt, elements) => {
-      if(elements.length > 0){
-        selectedChannel = elements[0].datasetIndex;
-
-        highlightChannel();
-
-        document.getElementById("info").innerText =
-          `Channel dipilih: CH${selectedChannel+1}`;
-      }
-    }
-  }
-});
-
-// ================= HIGHLIGHT CHANNEL =================
-function highlightChannel(){
-  chart.data.datasets.forEach((ds,i)=>{
-    ds.borderWidth = (i === selectedChannel) ? 5 : 2;
-  });
-  chart.update();
-}
-
-// ================= UPDATE GRAPH =================
-function redraw(){
-  chart.data.datasets.forEach((ds,i)=>{
-    ds.data = schedule.map(h=>h[i]);
-  });
-  chart.update();
-}
-
-// ================= DRAG SYSTEM FIX =================
 let drawing = false;
-let isDragging = false;
 
+// ================= DESKTOP =================
 ctx.addEventListener("mousedown", e=>{
   drawing = true;
-  isDragging = false;
+  updateValue(e.clientX, e.clientY);
 });
 
 ctx.addEventListener("mousemove", e=>{
   if(!drawing) return;
-
-  isDragging = true;
-  updateValue(e);
+  updateValue(e.clientX, e.clientY);
 });
 
 ctx.addEventListener("mouseup", ()=>{
   drawing = false;
 });
 
-// ================= FIX UTAMA =================
-function updateValue(e){
+// ================= HP / TOUCH =================
+ctx.addEventListener("touchstart", e=>{
+  e.preventDefault();
+  drawing = true;
+
+  let touch = e.touches[0];
+  updateValue(touch.clientX, touch.clientY);
+});
+
+ctx.addEventListener("touchmove", e=>{
+  e.preventDefault();
   if(!drawing) return;
 
-  const rect = ctx.getBoundingClientRect();
+  let touch = e.touches[0];
+  updateValue(touch.clientX, touch.clientY);
+});
 
-  let x = e.clientX - rect.left;
-  let y = e.clientY - rect.top;
-
-  // 🔥 PRESISI JAM
-  let hour = Math.floor(x / rect.width * 24);
-  hour = Math.max(0, Math.min(23, hour));
-
-  // 🔥 NILAI %
-  let value = 100 - (y / rect.height * 100);
-  value = Math.max(0, Math.min(100, value));
-
-  schedule[hour][selectedChannel] = value;
-  selectedHour = hour;
-
-  document.getElementById("info").innerText =
-    `CH${selectedChannel+1} | Jam ${hour} = ${value.toFixed(0)}%`;
-
-  redraw();
-  send();
-}
-
-// ================= PRESET =================
-function savePreset(name){
-  localStorage.setItem(name, JSON.stringify(schedule));
-}
-
-function loadPreset(name){
-  let d = localStorage.getItem(name);
-  if(d){
-    schedule = JSON.parse(d);
-    redraw();
-    send();
-  }
-}
-
-// ================= TEMP =================
-function setTemp(){
-  let t = document.getElementById("maxTemp").value;
-  client.publish("reef/maxtemp", JSON.stringify({maxTemp:parseFloat(t)}));
-}
-
-</script>
-
-</body>
-</html>
+ctx.addEventListener("touchend", ()=>{
+  drawing = false;
+});
