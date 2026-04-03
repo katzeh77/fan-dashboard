@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <title>Aquarium LED Controller - Smart Lighting System</title>
+    <title>Aquarium LED Controller - Smart Lighting System (24-Hour Format)</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mqtt/4.3.7/mqtt.min.js"></script>
     <style>
@@ -69,6 +69,15 @@
             font-size: 11px;
             opacity: 0.8;
             margin-top: 3px;
+        }
+
+        /* 24-hour format indicator */
+        .time-format {
+            position: absolute;
+            bottom: 5px;
+            right: 25px;
+            font-size: 10px;
+            opacity: 0.6;
         }
 
         .content {
@@ -405,6 +414,7 @@
             .clock-time { font-size: 16px; }
             .real-time-clock { position: relative; top: 0; right: 0; margin-top: 10px; display: inline-block; }
             .header { text-align: center; }
+            .time-format { position: relative; text-align: center; margin-top: 5px; }
         }
 
         @keyframes slideIn {
@@ -422,12 +432,13 @@
         <div class="header">
             <div>
                 <h1>🌊 Aquarium LED Controller Pro</h1>
-                <p>Smart Lighting System with Smooth Fading</p>
+                <p>Smart Lighting System with Smooth Fading | 24-Hour Format</p>
             </div>
             <div class="real-time-clock">
                 <div class="clock-time" id="clockTime">--:--:--</div>
                 <div class="clock-date" id="clockDate">---, -- --- ----</div>
             </div>
+            <div class="time-format">⏰ 24-Hour Format (00:00 - 23:59)</div>
         </div>
 
         <div class="content">
@@ -477,7 +488,7 @@
             </div>
 
             <div class="schedule-section">
-                <h3>📊 Lighting Schedule (24 Hours)</h3>
+                <h3>📊 Lighting Schedule (24 Hours) - Format 00:00 s/d 23:59</h3>
                 <div id="schedulePoints"></div>
                 <div class="button-group">
                     <button onclick="addSchedulePoint()" class="success">+ Add Schedule Point</button>
@@ -488,10 +499,10 @@
             </div>
 
             <div class="chart-container">
-                <h3>📈 Schedule Visualization (with Smooth Fading)</h3>
+                <h3>📈 Schedule Visualization (24-Hour Timeline)</h3>
                 <canvas id="scheduleChart"></canvas>
                 <p style="text-align: center; margin-top: 10px; font-size: 11px; color: #7f8c8d;">
-                    *Grafik menunjukkan intensitas cahaya setiap channel sepanjang 24 jam dengan efek fading halus
+                    *Grafik menunjukkan intensitas cahaya setiap channel sepanjang 24 jam (00:00 - 23:59) dengan efek fading halus
                 </p>
             </div>
 
@@ -529,9 +540,10 @@
             { name: 'Sump', color: '#FFA500' }
         ];
         
-        // ==================== REAL TIME CLOCK ====================
+        // ==================== REAL TIME CLOCK (24-HOUR FORMAT) ====================
         function updateRealTimeClock() {
             const now = new Date();
+            // 24-hour format using getHours() which returns 0-23
             const hours = String(now.getHours()).padStart(2, '0');
             const minutes = String(now.getMinutes()).padStart(2, '0');
             const seconds = String(now.getSeconds()).padStart(2, '0');
@@ -646,17 +658,15 @@
             showToast(`Fan: ${fanMode === 'auto' ? 'Auto Mode' : (fanMode === 'manual_on' ? 'Manual ON' : 'Manual OFF')}`, 'info');
         }
         
-        // ==================== SCHEDULE FUNCTIONS ====================
+        // ==================== SCHEDULE FUNCTIONS (24-HOUR FORMAT) ====================
         function addSchedulePoint() {
             console.log('Add schedule point clicked');
             
-            // Find time that doesn't exist yet
             let newTime = '12:00';
             const existingTimes = scheduleData.map(p => p.time);
             
             if (existingTimes.length > 0) {
-                // Try to find a time that's not used
-                const testTimes = ['06:00', '09:00', '12:00', '15:00', '18:00', '21:00'];
+                const testTimes = ['00:00', '03:00', '06:00', '09:00', '12:00', '15:00', '18:00', '21:00'];
                 for (let tt of testTimes) {
                     if (!existingTimes.includes(tt)) {
                         newTime = tt;
@@ -671,10 +681,7 @@
                 levels: [...defaultLevels]
             });
             
-            // Sort by time
             scheduleData.sort((a, b) => a.time.localeCompare(b.time));
-            
-            // Re-render
             renderSchedulePoints();
             updateChart();
             showToast('Schedule point added at ' + newTime, 'success');
@@ -695,7 +702,6 @@
                 pointDiv.className = 'schedule-point';
                 pointDiv.setAttribute('data-index', idx);
                 
-                // Header
                 const headerDiv = document.createElement('div');
                 headerDiv.className = 'schedule-header';
                 
@@ -704,9 +710,10 @@
                 const timeLabel = document.createElement('span');
                 timeLabel.style.fontWeight = 'bold';
                 timeLabel.style.fontSize = '12px';
-                timeLabel.textContent = '🕐 Time: ';
+                timeLabel.textContent = '🕐 Time (24h): ';
                 const timeInput = document.createElement('input');
                 timeInput.type = 'time';
+                timeInput.step = '60';
                 timeInput.value = point.time;
                 timeInput.onchange = (function(i) {
                     return function(e) { updateScheduleTime(i, e.target.value); };
@@ -725,7 +732,6 @@
                 headerDiv.appendChild(timeDiv);
                 headerDiv.appendChild(removeBtn);
                 
-                // Channels
                 const channelsDiv = document.createElement('div');
                 channelsDiv.className = 'channel-inputs';
                 
@@ -765,7 +771,7 @@
                 scheduleData.sort((a, b) => a.time.localeCompare(b.time));
                 renderSchedulePoints();
                 updateChart();
-                showToast('Schedule time updated', 'info');
+                showToast('Schedule time updated to ' + time, 'info');
             }
         }
         
@@ -805,6 +811,7 @@
                 pointRadius: 0
             }));
             
+            // Generate 24-hour data points (00:00 to 23:30, every 30 minutes)
             for (let hour = 0; hour < 24; hour++) {
                 for (let minute = 0; minute < 60; minute += 30) {
                     const timeStr = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
@@ -880,20 +887,24 @@
             scheduleData = [];
             const defaultPoints = [
                 { time: '00:00', levels: [0,0,0,0,0,0,0] },
-                { time: '06:00', levels: [30,20,15,40,25,50,60] },
-                { time: '09:00', levels: [70,50,40,85,60,90,100] },
+                { time: '05:00', levels: [5,3,2,10,5,15,20] },
+                { time: '06:30', levels: [30,20,15,40,25,50,60] },
+                { time: '08:00', levels: [60,45,35,75,55,80,85] },
+                { time: '10:00', levels: [85,65,50,90,70,95,100] },
                 { time: '12:00', levels: [100,80,60,100,80,100,100] },
-                { time: '15:00', levels: [80,60,45,90,65,95,100] },
-                { time: '18:00', levels: [50,35,25,70,45,75,90] },
-                { time: '22:00', levels: [10,5,5,20,10,30,50] },
-                { time: '23:59', levels: [0,0,0,0,0,0,0] }
+                { time: '14:00', levels: [90,70,55,95,75,95,100] },
+                { time: '16:00', levels: [70,50,40,85,60,85,90] },
+                { time: '18:00', levels: [40,25,20,60,40,65,75] },
+                { time: '20:00', levels: [15,10,8,30,15,40,50] },
+                { time: '22:00', levels: [5,3,2,10,5,20,25] },
+                { time: '23:30', levels: [0,0,0,0,0,0,0] }
             ];
             defaultPoints.forEach(point => {
                 scheduleData.push({ time: point.time, levels: [...point.levels] });
             });
             renderSchedulePoints();
             updateChart();
-            showToast('Reset to default schedule', 'info');
+            showToast('Reset to default schedule (24-hour format)', 'info');
         }
         
         // ==================== MANUAL CONTROL ====================
@@ -939,71 +950,4 @@
         }
         
         function setAllChannels(value) {
-            for (let i = 0; i < channels.length; i++) {
-                const input = document.getElementById(`manual_${i}`);
-                if (input) {
-                    input.value = value;
-                    sendManualControl(i, value);
-                }
-            }
-            showToast(`All channels set to ${value}%`, 'success');
-        }
-        
-        function setMaxTemperature() {
-            if (!client || !client.connected) {
-                showToast('MQTT not connected!', 'error');
-                return;
-            }
-            const maxTemp = parseFloat(document.getElementById('maxTemp').value);
-            if (isNaN(maxTemp) || maxTemp < 20 || maxTemp > 50) {
-                showToast('Temperature must be between 20-50°C', 'error');
-                return;
-            }
-            client.publish(topicPrefix + '/maxTemp', JSON.stringify({ maxTemp: maxTemp }));
-            showToast(`✅ Max temperature set to ${maxTemp}°C`, 'success');
-        }
-        
-        function showToast(message, type) {
-            const toast = document.createElement('div');
-            toast.style.cssText = `
-                position: fixed; bottom: 20px; right: 20px; padding: 10px 20px; border-radius: 8px;
-                color: white; z-index: 10000; animation: slideIn 0.3s ease; font-size: 13px;
-                background: ${type === 'success' ? '#27ae60' : (type === 'error' ? '#e74c3c' : (type === 'warning' ? '#f39c12' : '#3498db'))};
-                box-shadow: 0 3px 10px rgba(0,0,0,0.2);
-            `;
-            toast.textContent = message;
-            document.body.appendChild(toast);
-            setTimeout(() => {
-                toast.style.animation = 'slideOut 0.3s ease';
-                setTimeout(() => toast.remove(), 300);
-            }, 2000);
-        }
-        
-        function initChart() {
-            const ctx = document.getElementById('scheduleChart').getContext('2d');
-            chart = new Chart(ctx, {
-                type: 'line',
-                data: { labels: [], datasets: [] },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: true,
-                    scales: {
-                        y: { beginAtZero: true, max: 100, title: { display: true, text: 'Intensity (%)', font: { size: 12 } } },
-                        x: { title: { display: true, text: 'Time (Hours)', font: { size: 12 } }, ticks: { maxRotation: 45, minRotation: 45, stepSize: 2 } }
-                    },
-                    plugins: { legend: { position: 'bottom', labels: { font: { size: 10 } } } }
-                }
-            });
-        }
-        
-        // ==================== INITIALIZATION ====================
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log('Page loaded, initializing...');
-            initChart();
-            renderManualControls();
-            initMQTT();
-            resetToDefault();
-        });
-    </script>
-</body>
-</html>
+            for
