@@ -32,48 +32,68 @@
         .header {
             background: linear-gradient(135deg, #2c3e50 0%, #1a1a2e 100%);
             color: white;
-            padding: 25px;
+            padding: 20px 25px;
             text-align: center;
+            position: relative;
         }
 
         .header h1 {
-            font-size: 28px;
+            font-size: 26px;
             margin-bottom: 5px;
         }
 
         .header p {
             opacity: 0.8;
-            font-size: 14px;
+            font-size: 13px;
+        }
+
+        .real-time-clock {
+            position: absolute;
+            top: 20px;
+            right: 25px;
+            background: rgba(0,0,0,0.3);
+            padding: 8px 15px;
+            border-radius: 30px;
+            text-align: center;
+            backdrop-filter: blur(5px);
+        }
+
+        .clock-time {
+            font-size: 24px;
+            font-weight: bold;
+            font-family: 'Courier New', monospace;
+            letter-spacing: 2px;
+        }
+
+        .clock-date {
+            font-size: 11px;
+            opacity: 0.8;
+            margin-top: 3px;
         }
 
         .content {
-            padding: 25px;
+            padding: 20px;
         }
 
         /* Status Panel */
         .status-panel {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-            gap: 25px;
-            margin-bottom: 30px;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 20px;
+            margin-bottom: 25px;
         }
 
         .status-card {
             background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-            border-radius: 15px;
-            padding: 20px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-            transition: transform 0.3s;
-        }
-
-        .status-card:hover {
-            transform: translateY(-5px);
+            border-radius: 12px;
+            padding: 15px;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.1);
         }
 
         .status-card h3 {
-            margin-bottom: 15px;
+            margin-bottom: 12px;
             color: #2c3e50;
-            font-size: 18px;
+            font-size: 16px;
             border-left: 4px solid #3498db;
             padding-left: 10px;
         }
@@ -81,223 +101,198 @@
         .temp-display {
             display: flex;
             justify-content: space-around;
-            margin-bottom: 20px;
+            margin-bottom: 15px;
         }
 
         .temp-item {
             text-align: center;
             background: white;
-            padding: 15px;
-            border-radius: 10px;
+            padding: 10px;
+            border-radius: 8px;
             flex: 1;
             margin: 0 5px;
         }
 
         .temp-value {
-            font-size: 36px;
+            font-size: 28px;
             font-weight: bold;
             color: #e74c3c;
         }
 
         .temp-label {
-            font-size: 13px;
+            font-size: 11px;
             color: #7f8c8d;
-            margin-top: 5px;
+            margin-top: 3px;
         }
 
         .max-temp-control {
-            margin-top: 15px;
+            margin-top: 12px;
             background: white;
-            padding: 15px;
-            border-radius: 10px;
+            padding: 10px;
+            border-radius: 8px;
         }
 
         .max-temp-control label {
             display: block;
-            margin-bottom: 8px;
+            margin-bottom: 5px;
             font-weight: bold;
+            font-size: 12px;
             color: #2c3e50;
         }
 
         .max-temp-control input {
             width: 100%;
-            padding: 10px;
+            padding: 8px;
             border: 2px solid #ddd;
-            border-radius: 8px;
-            margin-bottom: 10px;
-            font-size: 14px;
+            border-radius: 6px;
+            margin-bottom: 8px;
+            font-size: 13px;
         }
 
         .max-temp-control button {
             background: #3498db;
             width: 100%;
+            padding: 8px;
+            font-size: 12px;
         }
 
         .warning {
             background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
             color: white;
-            padding: 15px;
-            border-radius: 10px;
-            margin-top: 15px;
+            padding: 10px;
+            border-radius: 8px;
+            margin-top: 12px;
             display: none;
-            animation: shake 0.5s;
-        }
-
-        @keyframes shake {
-            0%, 100% { transform: translateX(0); }
-            25% { transform: translateX(-5px); }
-            75% { transform: translateX(5px); }
+            font-size: 12px;
         }
 
         .warning.show {
             display: block;
         }
 
-        /* Fan Control */
         .fan-control {
-            margin-top: 15px;
+            margin-top: 12px;
             background: white;
-            padding: 15px;
-            border-radius: 10px;
+            padding: 10px;
+            border-radius: 8px;
         }
 
         .fan-control h4 {
-            margin-bottom: 10px;
+            margin-bottom: 8px;
+            font-size: 13px;
             color: #2c3e50;
         }
 
         .fan-buttons {
             display: flex;
-            gap: 10px;
-            margin-bottom: 15px;
+            gap: 8px;
+            margin-bottom: 10px;
         }
 
         .fan-buttons button {
             flex: 1;
-            padding: 12px;
+            padding: 8px;
+            font-size: 11px;
         }
 
         .fan-status {
-            margin-top: 10px;
-            padding: 10px;
-            border-radius: 8px;
+            margin-top: 8px;
+            padding: 8px;
+            border-radius: 6px;
             text-align: center;
             font-weight: bold;
+            font-size: 12px;
         }
 
-        .fan-status.auto {
-            background: #3498db;
-            color: white;
-        }
-
-        .fan-status.on {
-            background: #ff6b6b;
-            color: white;
-        }
-
-        .fan-status.off {
-            background: #51cf66;
-            color: white;
-        }
+        .fan-status.auto { background: #3498db; color: white; }
+        .fan-status.on { background: #ff6b6b; color: white; }
+        .fan-status.off { background: #51cf66; color: white; }
 
         .fading-status {
-            margin-top: 15px;
-            padding: 10px;
-            border-radius: 8px;
+            margin-top: 12px;
+            padding: 8px;
+            border-radius: 6px;
             text-align: center;
+            font-size: 12px;
             background: white;
         }
 
         /* Schedule Section */
         .schedule-section {
             background: #f8f9fa;
-            border-radius: 15px;
-            padding: 20px;
-            margin-bottom: 30px;
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 25px;
         }
 
         .schedule-section h3 {
-            margin-bottom: 20px;
+            margin-bottom: 15px;
             color: #2c3e50;
-            font-size: 20px;
+            font-size: 18px;
         }
 
         .schedule-point {
             background: white;
-            border-radius: 12px;
-            padding: 20px;
-            margin-bottom: 20px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            transition: all 0.3s;
-        }
-
-        .schedule-point:hover {
-            box-shadow: 0 5px 20px rgba(0,0,0,0.15);
+            border-radius: 10px;
+            padding: 12px;
+            margin-bottom: 12px;
+            box-shadow: 0 1px 5px rgba(0,0,0,0.1);
         }
 
         .schedule-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 20px;
-            flex-wrap: wrap;
-            gap: 15px;
-        }
-
-        .time-input {
-            display: flex;
-            gap: 10px;
-            align-items: center;
+            margin-bottom: 12px;
         }
 
         .time-input input {
-            padding: 10px 15px;
+            padding: 6px 10px;
             border: 2px solid #ddd;
-            border-radius: 8px;
-            font-size: 16px;
+            border-radius: 6px;
+            font-size: 13px;
             font-weight: bold;
+            width: 100px;
         }
 
+        /* Channel inputs - 1 baris compact */
         .channel-inputs {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-            gap: 15px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-items: center;
         }
 
         .channel-item {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
             background: #f8f9fa;
-            padding: 12px;
-            border-radius: 10px;
-            border-left: 4px solid;
+            padding: 4px 8px;
+            border-radius: 20px;
+            border-left: 3px solid;
+            font-size: 11px;
         }
 
         .channel-item label {
-            display: block;
-            margin-bottom: 8px;
-            font-size: 13px;
             font-weight: bold;
-            color: #2c3e50;
+            font-size: 10px;
+            white-space: nowrap;
         }
 
         .channel-item input {
-            width: 100%;
-            padding: 10px;
-            border: 2px solid #ddd;
-            border-radius: 8px;
-            font-size: 14px;
+            width: 50px;
+            padding: 4px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 11px;
             text-align: center;
-            font-weight: bold;
-        }
-
-        .channel-item input:focus {
-            outline: none;
-            border-color: #3498db;
         }
 
         .button-group {
             display: flex;
-            gap: 12px;
-            margin-top: 25px;
+            gap: 8px;
+            margin-top: 15px;
             flex-wrap: wrap;
         }
 
@@ -305,202 +300,140 @@
             background: #2c3e50;
             color: white;
             border: none;
-            padding: 12px 24px;
-            border-radius: 8px;
+            padding: 8px 16px;
+            border-radius: 6px;
             cursor: pointer;
-            transition: all 0.3s;
-            font-size: 14px;
+            font-size: 12px;
             font-weight: bold;
+            transition: all 0.2s;
         }
 
         button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            transform: translateY(-1px);
+            box-shadow: 0 3px 10px rgba(0,0,0,0.2);
         }
 
-        button:active {
-            transform: translateY(0);
-        }
-
-        button.danger {
-            background: #e74c3c;
-        }
-
-        button.danger:hover {
-            background: #c0392b;
-        }
-
-        button.success {
-            background: #27ae60;
-        }
-
-        button.success:hover {
-            background: #229954;
-        }
-
-        button.info {
-            background: #3498db;
-        }
-
-        button.info:hover {
-            background: #2980b9;
-        }
-
-        button.warning {
-            background: #f39c12;
-        }
-
-        button.warning:hover {
-            background: #e67e22;
-        }
+        button.danger { background: #e74c3c; }
+        button.success { background: #27ae60; }
+        button.info { background: #3498db; }
+        button.warning { background: #f39c12; }
 
         /* Chart Container */
         .chart-container {
             background: #f8f9fa;
-            border-radius: 15px;
-            padding: 20px;
-            margin-top: 30px;
+            border-radius: 12px;
+            padding: 15px;
+            margin-top: 25px;
         }
 
         .chart-container h3 {
-            margin-bottom: 20px;
+            margin-bottom: 15px;
             color: #2c3e50;
+            font-size: 16px;
         }
 
         canvas {
-            max-height: 500px;
+            max-height: 400px;
         }
 
         /* Manual Control */
         .manual-control {
-            margin-top: 30px;
-            padding: 25px;
+            margin-top: 25px;
+            padding: 15px;
             background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-            border-radius: 15px;
+            border-radius: 12px;
         }
 
         .manual-control h3 {
-            margin-bottom: 20px;
+            margin-bottom: 12px;
             color: #2c3e50;
+            font-size: 16px;
         }
 
         .manual-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-            gap: 15px;
-            margin-top: 15px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 10px;
         }
 
         .manual-item {
             background: white;
-            padding: 15px;
-            border-radius: 10px;
-            text-align: center;
-            transition: transform 0.3s;
-        }
-
-        .manual-item:hover {
-            transform: scale(1.05);
+            padding: 5px 10px;
+            border-radius: 20px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
         }
 
         .manual-item label {
-            display: block;
-            margin-bottom: 10px;
             font-weight: bold;
-            font-size: 14px;
-            color: #2c3e50;
+            font-size: 11px;
         }
 
         .manual-item input {
-            width: 100%;
-            padding: 10px;
-            border: 2px solid #ddd;
-            border-radius: 8px;
+            width: 55px;
+            padding: 5px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
             text-align: center;
-            font-size: 16px;
-            font-weight: bold;
+            font-size: 12px;
         }
 
         /* Current Levels */
         .current-levels {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-            gap: 10px;
-            margin-top: 15px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 10px;
         }
 
         .level-item {
             text-align: center;
-            padding: 10px;
+            padding: 5px 10px;
             background: white;
-            border-radius: 8px;
-            font-size: 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
         }
 
         .level-item strong {
-            display: block;
-            margin-bottom: 5px;
+            font-weight: bold;
         }
 
         /* Responsive */
         @media (max-width: 768px) {
-            .channel-inputs {
-                grid-template-columns: 1fr;
-            }
-            .manual-grid {
-                grid-template-columns: 1fr;
-            }
-            .temp-value {
-                font-size: 24px;
-            }
-            button {
-                padding: 8px 16px;
-                font-size: 12px;
-            }
+            .channel-item input { width: 45px; }
+            .manual-item input { width: 50px; }
+            .clock-time { font-size: 16px; }
+            .real-time-clock { position: relative; top: 0; right: 0; margin-top: 10px; display: inline-block; }
+            .header { text-align: center; }
         }
 
-        /* Scrollbar */
-        ::-webkit-scrollbar {
-            width: 10px;
-            height: 10px;
+        /* Toast animation */
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
         }
-
-        ::-webkit-scrollbar-track {
-            background: #f1f1f1;
-            border-radius: 10px;
-        }
-
-        ::-webkit-scrollbar-thumb {
-            background: #888;
-            border-radius: 10px;
-        }
-
-        ::-webkit-scrollbar-thumb:hover {
-            background: #555;
-        }
-
-        /* Loading Animation */
-        .loading {
-            display: inline-block;
-            width: 20px;
-            height: 20px;
-            border: 3px solid #f3f3f3;
-            border-top: 3px solid #3498db;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+        @keyframes slideOut {
+            from { transform: translateX(0); opacity: 1; }
+            to { transform: translateX(100%); opacity: 0; }
         }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>🌊 Aquarium LED Controller Pro</h1>
-            <p>Smart Lighting Management System with Smooth Fading</p>
+            <div>
+                <h1>🌊 Aquarium LED Controller Pro</h1>
+                <p>Smart Lighting System with Smooth Fading</p>
+            </div>
+            <div class="real-time-clock">
+                <div class="clock-time" id="clockTime">--:--:--</div>
+                <div class="clock-date" id="clockDate">---, -- --- ----</div>
+            </div>
         </div>
 
         <div class="content">
@@ -510,18 +443,18 @@
                     <h3>🌡️ Temperature Monitor</h3>
                     <div class="temp-display">
                         <div class="temp-item">
-                            <div class="temp-value" id="temp1">--.-</div>
-                            <div class="temp-label">🌡️ Upper Temperature</div>
+                            <div class="temp-value" id="temp1">--.-°C</div>
+                            <div class="temp-label">🌡️ Upper</div>
                         </div>
                         <div class="temp-item">
-                            <div class="temp-value" id="temp2">--.-</div>
-                            <div class="temp-label">🌡️ Lower Temperature</div>
+                            <div class="temp-value" id="temp2">--.-°C</div>
+                            <div class="temp-label">🌡️ Lower</div>
                         </div>
                     </div>
                     <div class="max-temp-control">
-                        <label>⚠️ Maximum Temperature Limit (°C)</label>
+                        <label>⚠️ Max Temperature Limit</label>
                         <input type="number" id="maxTemp" step="0.5" value="35.0">
-                        <button onclick="setMaxTemperature()" class="info">Set Safety Limit</button>
+                        <button onclick="setMaxTemperature()" class="info">Set Limit</button>
                     </div>
                     <div class="warning" id="warning">
                         ⚠️ <span id="warningMsg"></span>
@@ -531,24 +464,22 @@
                 <div class="status-card">
                     <h3>💨 System Status</h3>
                     <div class="fan-control">
-                        <h4>Cooling Fan Controller</h4>
+                        <h4>Cooling Fan</h4>
                         <div class="fan-buttons">
-                            <button onclick="setFan(1)" class="warning">🔴 Manual ON</button>
-                            <button onclick="setFan(0)" class="info">🔵 Manual OFF</button>
-                            <button onclick="setFan(2)" class="success">🟢 Auto Mode</button>
+                            <button onclick="setFan(1)" class="warning">🔴 ON</button>
+                            <button onclick="setFan(0)" class="info">🔵 OFF</button>
+                            <button onclick="setFan(2)" class="success">🟢 Auto</button>
                         </div>
-                        <div class="fan-status auto" id="fanStatusDisplay">
-                            Mode: Loading...
-                        </div>
+                        <div class="fan-status auto" id="fanStatusDisplay">Mode: Auto</div>
                     </div>
                     <div class="fading-status" id="fadingStatus">
-                        🌅 Fading Status: Checking...
+                        🌅 Fading: Active
                     </div>
                 </div>
             </div>
 
             <!-- Current LED Levels -->
-            <div class="status-card" style="margin-bottom: 25px;">
+            <div class="status-card" style="margin-bottom: 20px;">
                 <h3>💡 Real-time LED Output</h3>
                 <div id="currentLevels" class="current-levels"></div>
             </div>
@@ -558,31 +489,25 @@
                 <h3>📊 Lighting Schedule (24 Hours)</h3>
                 <div id="schedulePoints"></div>
                 <div class="button-group">
-                    <button onclick="addSchedulePoint()" class="success">+ Add Schedule Point</button>
-                    <button onclick="saveSchedule()" class="info">💾 Save to ESP32</button>
-                    <button onclick="loadScheduleFromESP()" class="info">📥 Load from ESP32</button>
-                    <button onclick="resetToDefault()" class="danger">🔄 Reset Default</button>
+                    <button onclick="addSchedulePoint()" class="success">+ Add Point</button>
+                    <button onclick="saveSchedule()" class="info">💾 Save</button>
+                    <button onclick="loadScheduleFromESP()" class="info">📥 Load</button>
+                    <button onclick="resetToDefault()" class="danger">🔄 Reset</button>
                 </div>
             </div>
 
             <!-- Chart -->
             <div class="chart-container">
-                <h3>📈 Lighting Schedule Visualization</h3>
+                <h3>📈 Schedule Visualization (with Smooth Fading)</h3>
                 <canvas id="scheduleChart"></canvas>
-                <p style="text-align: center; margin-top: 15px; color: #7f8c8d; font-size: 12px;">
-                    *Grafik menunjukkan intensitas cahaya setiap channel sepanjang 24 jam dengan efek fading halus
-                </p>
             </div>
 
             <!-- Manual Control -->
             <div class="manual-control">
                 <h3>🎮 Manual LED Override</h3>
-                <p style="font-size: 12px; color: #7f8c8d; margin-bottom: 15px;">
-                    *Pengaturan manual akan mengganggu jadwal otomatis sementara
-                </p>
                 <div class="manual-grid" id="manualChannels"></div>
-                <div class="button-group" style="margin-top: 20px;">
-                    <button onclick="setAllChannels(0)" class="danger">All OFF (0%)</button>
+                <div class="button-group" style="margin-top: 12px;">
+                    <button onclick="setAllChannels(0)" class="danger">All OFF</button>
                     <button onclick="setAllChannels(50)" class="info">All 50%</button>
                     <button onclick="setAllChannels(100)" class="success">All 100%</button>
                 </div>
@@ -598,31 +523,49 @@
         let client = null;
         let scheduleData = [];
         let chart = null;
-        let currentFanMode = 'auto';
         
         // Channel configurations
         const channels = [
-            { name: 'Royal Blue', color: '#4169E1', pin: 5 },
-            { name: 'Blue', color: '#0000FF', pin: 18 },
-            { name: 'Violet', color: '#8B00FF', pin: 19 },
-            { name: 'Red', color: '#FF0000', pin: 21 },
-            { name: 'Green', color: '#00FF00', pin: 22 },
-            { name: 'White', color: '#FFFFFF', pin: 23, textColor: '#333' },
-            { name: 'Sump', color: '#FFA500', pin: 25 }
+            { name: 'RB', color: '#4169E1', fullName: 'Royal Blue' },
+            { name: 'BL', color: '#0000FF', fullName: 'Blue' },
+            { name: 'VI', color: '#8B00FF', fullName: 'Violet' },
+            { name: 'RD', color: '#FF0000', fullName: 'Red' },
+            { name: 'GN', color: '#00FF00', fullName: 'Green' },
+            { name: 'WH', color: '#FFFFFF', fullName: 'White', textColor: '#333' },
+            { name: 'SU', color: '#FFA500', fullName: 'Sump' }
         ];
+        
+        // ==================== REAL TIME CLOCK ====================
+        function updateRealTimeClock() {
+            const now = new Date();
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const seconds = String(now.getSeconds()).padStart(2, '0');
+            document.getElementById('clockTime').textContent = `${hours}:${minutes}:${seconds}`;
+            
+            const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+            const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            const dayName = days[now.getDay()];
+            const date = now.getDate();
+            const month = months[now.getMonth()];
+            const year = now.getFullYear();
+            document.getElementById('clockDate').textContent = `${dayName}, ${date} ${month} ${year}`;
+        }
+        
+        // Update clock every second
+        setInterval(updateRealTimeClock, 1000);
+        updateRealTimeClock();
         
         // ==================== MQTT FUNCTIONS ====================
         function initMQTT() {
-            console.log('🔄 Connecting to MQTT broker...');
-            showToast('Connecting to MQTT...', 'info');
-            
+            console.log('Connecting to MQTT...');
             client = mqtt.connect(mqttBroker, {
                 keepalive: 60,
                 reconnectPeriod: 5000
             });
             
             client.on('connect', () => {
-                console.log('✅ Connected to MQTT broker');
+                console.log('Connected to MQTT');
                 showToast('MQTT Connected!', 'success');
                 client.subscribe(topicPrefix + '/status');
                 client.subscribe(topicPrefix + '/fan/response');
@@ -645,55 +588,45 @@
             
             client.on('error', (err) => {
                 console.error('MQTT error:', err);
-                showToast('MQTT Error!', 'error');
             });
         }
         
-        // ==================== UI UPDATE FUNCTIONS ====================
+        // ==================== UI UPDATE ====================
         function updateUI(data) {
-            // Update temperatures
             document.getElementById('temp1').textContent = data.temperature1 ? data.temperature1.toFixed(1) + '°C' : '--.-°C';
             document.getElementById('temp2').textContent = data.temperature2 ? data.temperature2.toFixed(1) + '°C' : '--.-°C';
             document.getElementById('maxTemp').value = data.maxTemperature || 35;
             
-            // Update fan status
-            const fanStatus = data.fanState ? 'ON 🔥 (Running)' : 'OFF ❄️ (Stopped)';
-            document.getElementById('fanStatusDisplay').innerHTML = `Fan: ${fanStatus}`;
+            if (data.fanState !== undefined) {
+                const fanStatus = data.fanState ? 'ON 🔥' : 'OFF ❄️';
+                const modeText = currentFanMode === 'auto' ? 'Auto' : (currentFanMode === 'manual_on' ? 'Manual ON' : 'Manual OFF');
+                document.getElementById('fanStatusDisplay').innerHTML = `Fan: ${fanStatus} | Mode: ${modeText}`;
+            }
             
-            // Update fading status
             if (data.isFading) {
-                document.getElementById('fadingStatus').innerHTML = '🌅 Fading in progress... Smooth transition active';
+                document.getElementById('fadingStatus').innerHTML = '🌅 Fading in progress... Smooth transition';
                 document.getElementById('fadingStatus').style.background = '#fff3cd';
                 document.getElementById('fadingStatus').style.color = '#856404';
             } else {
-                document.getElementById('fadingStatus').innerHTML = '✅ Schedule running smoothly';
+                document.getElementById('fadingStatus').innerHTML = '✅ Schedule running';
                 document.getElementById('fadingStatus').style.background = '#d4edda';
                 document.getElementById('fadingStatus').style.color = '#155724';
             }
             
-            // Check overheat
             if (data.overheat) {
-                const warning = document.getElementById('warning');
-                warning.classList.add('show');
-                document.getElementById('warningMsg').innerHTML = 
-                    `🔥 LAMPU PANAS! Suhu melebihi batas (${data.maxTemperature}°C). 
-                     Suhu Atas: ${data.temperature1 ? data.temperature1.toFixed(1) : '--'}°C, 
-                     Suhu Bawah: ${data.temperature2 ? data.temperature2.toFixed(1) : '--'}°C - Semua lampu dimatikan!`;
-                // Play sound alert (optional)
-                playAlertSound();
+                document.getElementById('warning').classList.add('show');
+                document.getElementById('warningMsg').innerHTML = `🔥 OVERHEAT! Temp > ${data.maxTemperature}°C | Upper: ${data.temperature1?.toFixed(1)}°C Lower: ${data.temperature2?.toFixed(1)}°C - LEDs OFF!`;
             } else {
                 document.getElementById('warning').classList.remove('show');
             }
             
-            // Update current levels display
             if (data.levels) {
                 const levelsHtml = channels.map((ch, idx) => {
-                    const level = data.levels[idx] ? data.levels[idx].toFixed(1) : 0;
-                    const bgOpacity = level / 100;
+                    const level = data.levels[idx] ? data.levels[idx].toFixed(0) : 0;
                     return `
-                        <div class="level-item" style="border-left: 4px solid ${ch.color}; background: rgba(${parseInt(ch.color.slice(1,3),16)}, ${parseInt(ch.color.slice(3,5),16)}, ${parseInt(ch.color.slice(5,7),16)}, 0.1)">
+                        <div class="level-item" style="border-left: 3px solid ${ch.color}; background: rgba(0,0,0,0.05)">
                             <strong>${ch.name}</strong>
-                            <span style="font-size: 20px; font-weight: bold; color: ${ch.color};">${level}%</span>
+                            <span style="color: ${ch.color}; font-weight: bold;">${level}%</span>
                         </div>
                     `;
                 }).join('');
@@ -701,13 +634,14 @@
             }
         }
         
+        let currentFanMode = 'auto';
         function updateFanStatusDisplay(data) {
             if (data.mode) {
                 currentFanMode = data.mode;
-                const modeText = data.mode === 'auto' ? '🟢 Auto Mode (Temperature Controlled)' : 
-                                 data.mode === 'manual_on' ? '🔴 Manual ON' : '🔵 Manual OFF';
                 const statusDiv = document.getElementById('fanStatusDisplay');
-                statusDiv.innerHTML = `Mode: ${modeText}`;
+                const fanStateText = data.state ? 'ON' : 'OFF';
+                const modeText = data.mode === 'auto' ? 'Auto' : (data.mode === 'manual_on' ? 'Manual ON' : 'Manual OFF');
+                statusDiv.innerHTML = `Fan: ${fanStateText} 🔥 | Mode: ${modeText}`;
                 statusDiv.className = `fan-status ${data.mode === 'auto' ? 'auto' : (data.mode === 'manual_on' ? 'on' : 'off')}`;
             }
         }
@@ -717,64 +651,32 @@
                 showToast('MQTT not connected!', 'error');
                 return;
             }
-            
-            let fanMode = '';
-            if (mode === 1) {
-                fanMode = 'manual_on';
-                showToast('Fan: Manual ON', 'warning');
-            } else if (mode === 0) {
-                fanMode = 'manual_off';
-                showToast('Fan: Manual OFF', 'info');
-            } else {
-                fanMode = 'auto';
-                showToast('Fan: Auto Mode', 'success');
-            }
-            
-            const message = JSON.stringify({ mode: fanMode });
-            client.publish(topicPrefix + '/fan/control', message);
+            let fanMode = mode === 1 ? 'manual_on' : (mode === 0 ? 'manual_off' : 'auto');
+            client.publish(topicPrefix + '/fan/control', JSON.stringify({ mode: fanMode }));
+            showToast(`Fan: ${fanMode}`, 'info');
         }
         
         // ==================== SCHEDULE FUNCTIONS ====================
         function addSchedulePoint() {
             let defaultTime = '12:00';
             if (scheduleData.length > 0) {
-                // Find a gap between existing points
-                const times = scheduleData.map(p => p.time).sort();
-                for (let i = 0; i < times.length - 1; i++) {
-                    const time1 = timeToMinutes(times[i]);
-                    const time2 = timeToMinutes(times[i + 1]);
-                    if (time2 - time1 > 60) { // Gap more than 1 hour
-                        const midMinutes = (time1 + time2) / 2;
-                        defaultTime = minutesToTime(midMinutes);
-                        break;
-                    }
-                }
+                defaultTime = '12:00';
             }
-            
             const defaultLevels = channels.map(() => 0);
-            scheduleData.push({
-                time: defaultTime,
-                levels: [...defaultLevels]
-            });
+            scheduleData.push({ time: defaultTime, levels: [...defaultLevels] });
             scheduleData.sort((a, b) => a.time.localeCompare(b.time));
             renderSchedulePoints();
             updateChart();
-            showToast('Schedule point added', 'success');
+            showToast('Point added', 'success');
         }
         
         function renderSchedulePoints() {
             const container = document.getElementById('schedulePoints');
             if (!container) return;
-            
             container.innerHTML = '';
             
             if (scheduleData.length === 0) {
-                container.innerHTML = `
-                    <div style="text-align: center; padding: 40px; color: #999;">
-                        <p>📅 No schedule points yet</p>
-                        <p style="font-size: 12px;">Click "Add Schedule Point" to start creating your lighting schedule</p>
-                    </div>
-                `;
+                container.innerHTML = '<div style="text-align:center;padding:30px;color:#999;">No schedule points. Click "Add Point"</div>';
                 return;
             }
             
@@ -782,29 +684,34 @@
                 const pointDiv = document.createElement('div');
                 pointDiv.className = 'schedule-point';
                 
-                pointDiv.innerHTML = `
-                    <div class="schedule-header">
-                        <div class="time-input">
-                            <span style="font-weight: bold;">🕐 Time:</span>
-                            <input type="time" value="${point.time}" onchange="updateScheduleTime(${idx}, this.value)">
-                        </div>
-                        <button onclick="removeSchedulePoint(${idx})" class="danger">🗑️ Remove</button>
+                // Header with time and remove button
+                const headerDiv = document.createElement('div');
+                headerDiv.className = 'schedule-header';
+                headerDiv.innerHTML = `
+                    <div class="time-input">
+                        <input type="time" value="${point.time}" onchange="updateScheduleTime(${idx}, this.value)">
                     </div>
-                    <div class="channel-inputs">
-                        ${channels.map((ch, chIdx) => `
-                            <div class="channel-item" style="border-left-color: ${ch.color}">
-                                <label style="color: ${ch.color};">💡 ${ch.name}</label>
-                                <input type="number" 
-                                       min="0" 
-                                       max="100" 
-                                       step="1" 
-                                       value="${point.levels[chIdx]}" 
-                                       onchange="updateScheduleLevel(${idx}, ${chIdx}, this.value)">
-                                <small style="display: block; text-align: center; margin-top: 5px;">Intensity (%)</small>
-                            </div>
-                        `).join('')}
-                    </div>
+                    <button onclick="removeSchedulePoint(${idx})" class="danger" style="padding:4px 12px;">Remove</button>
                 `;
+                
+                // Channel inputs in one row (compact)
+                const channelsDiv = document.createElement('div');
+                channelsDiv.className = 'channel-inputs';
+                
+                channels.forEach((ch, chIdx) => {
+                    const itemDiv = document.createElement('div');
+                    itemDiv.className = 'channel-item';
+                    itemDiv.style.borderLeftColor = ch.color;
+                    itemDiv.innerHTML = `
+                        <label style="color:${ch.color};">${ch.name}</label>
+                        <input type="number" min="0" max="100" step="1" value="${point.levels[chIdx]}" 
+                               onchange="updateScheduleLevel(${idx}, ${chIdx}, this.value)">
+                    `;
+                    channelsDiv.appendChild(itemDiv);
+                });
+                
+                pointDiv.appendChild(headerDiv);
+                pointDiv.appendChild(channelsDiv);
                 container.appendChild(pointDiv);
             });
         }
@@ -815,7 +722,6 @@
                 scheduleData.sort((a, b) => a.time.localeCompare(b.time));
                 renderSchedulePoints();
                 updateChart();
-                showToast('Schedule time updated', 'info');
             }
         }
         
@@ -833,39 +739,34 @@
                 scheduleData.splice(index, 1);
                 renderSchedulePoints();
                 updateChart();
-                showToast('Schedule point removed', 'warning');
+                showToast('Point removed', 'warning');
             } else {
-                showToast('Cannot remove! Need at least 2 schedule points', 'error');
+                showToast('Need at least 2 points!', 'error');
             }
         }
         
-        // ==================== CHART FUNCTIONS ====================
+        // ==================== CHART ====================
         function updateChart() {
             if (!chart) return;
             
             const timeLabels = [];
             const datasets = channels.map((ch, idx) => ({
-                label: ch.name,
+                label: ch.fullName,
                 data: [],
                 borderColor: ch.color,
                 backgroundColor: ch.color + '20',
                 borderWidth: 2,
                 tension: 0.4,
                 fill: true,
-                pointRadius: 0,
-                pointHoverRadius: 5
+                pointRadius: 0
             }));
             
-            // Generate 24-hour data points (every 30 minutes for smooth curve)
             for (let hour = 0; hour < 24; hour++) {
                 for (let minute = 0; minute < 60; minute += 30) {
                     const timeStr = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
                     timeLabels.push(timeStr);
-                    
                     const levels = getInterpolatedLevels(timeStr);
-                    datasets.forEach((ds, idx) => {
-                        ds.data.push(levels[idx]);
-                    });
+                    datasets.forEach((ds, idx) => ds.data.push(levels[idx]));
                 }
             }
             
@@ -878,16 +779,12 @@
             if (scheduleData.length === 0) return channels.map(() => 0);
             
             const timeMinutes = timeToMinutes(time);
-            let prevPoint = null;
-            let nextPoint = null;
+            let prevPoint = null, nextPoint = null;
             
             for (let i = 0; i < scheduleData.length; i++) {
                 const pointMinutes = timeToMinutes(scheduleData[i].time);
-                if (pointMinutes <= timeMinutes) {
-                    prevPoint = scheduleData[i];
-                } else if (!nextPoint) {
-                    nextPoint = scheduleData[i];
-                }
+                if (pointMinutes <= timeMinutes) prevPoint = scheduleData[i];
+                else if (!nextPoint) nextPoint = scheduleData[i];
             }
             
             if (!prevPoint) prevPoint = scheduleData[scheduleData.length - 1];
@@ -895,7 +792,6 @@
             
             let prevMinutes = timeToMinutes(prevPoint.time);
             let nextMinutes = timeToMinutes(nextPoint.time);
-            
             if (nextMinutes < prevMinutes) nextMinutes += 1440;
             let currentMinutes = timeMinutes;
             if (currentMinutes < prevMinutes) currentMinutes += 1440;
@@ -905,31 +801,21 @@
             return channels.map((_, idx) => {
                 const start = prevPoint.levels[idx];
                 const end = nextPoint.levels[idx];
-                const interpolated = start + (end - start) * ratio;
-                return Math.round(interpolated * 10) / 10;
+                return Math.round((start + (end - start) * ratio) * 10) / 10;
             });
         }
         
         function timeToMinutes(time) {
-            const parts = time.split(':');
-            const hours = parseInt(parts[0]) || 0;
-            const minutes = parseInt(parts[1]) || 0;
+            const [hours, minutes] = time.split(':').map(Number);
             return hours * 60 + minutes;
         }
         
-        function minutesToTime(minutes) {
-            const hours = Math.floor(minutes / 60);
-            const mins = Math.round(minutes % 60);
-            return `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
-        }
-        
-        // ==================== SAVE/LOAD FUNCTIONS ====================
+        // ==================== SAVE/LOAD ====================
         function saveSchedule() {
             if (!client || !client.connected) {
                 showToast('MQTT not connected!', 'error');
                 return;
             }
-            
             const scheduleForESP = {
                 count: scheduleData.length,
                 schedules: scheduleData.map(point => ({
@@ -938,69 +824,45 @@
                     levels: point.levels.map(l => parseFloat(l))
                 }))
             };
-            
-            const message = JSON.stringify(scheduleForESP);
-            client.publish(topicPrefix + '/schedule', message);
-            showToast('✅ Schedule saved to ESP32!', 'success');
+            client.publish(topicPrefix + '/schedule', JSON.stringify(scheduleForESP));
+            showToast('Schedule saved to ESP32!', 'success');
         }
         
-        function loadScheduleFromESP() {
-            resetToDefault();
-            showToast('Schedule loaded', 'success');
-        }
+        function loadScheduleFromESP() { resetToDefault(); }
         
         function resetToDefault() {
             scheduleData = [];
-            
-            // Default schedule with smooth sunrise/sunset effect
             const defaultPoints = [
-                { time: '00:00', levels: [0, 0, 0, 0, 0, 0, 0] },
-                { time: '05:00', levels: [5, 3, 2, 10, 5, 15, 20] },
-                { time: '06:30', levels: [30, 20, 15, 40, 25, 50, 60] },
-                { time: '08:00', levels: [60, 45, 35, 75, 55, 80, 85] },
-                { time: '10:00', levels: [85, 65, 50, 90, 70, 95, 100] },
-                { time: '12:00', levels: [100, 80, 60, 100, 80, 100, 100] },
-                { time: '14:00', levels: [90, 70, 55, 95, 75, 95, 100] },
-                { time: '16:00', levels: [70, 50, 40, 85, 60, 85, 90] },
-                { time: '18:00', levels: [40, 25, 20, 60, 40, 65, 75] },
-                { time: '20:00', levels: [15, 10, 8, 30, 15, 40, 50] },
-                { time: '22:00', levels: [5, 3, 2, 10, 5, 20, 25] },
-                { time: '23:30', levels: [0, 0, 0, 0, 0, 0, 0] }
+                { time: '00:00', levels: [0,0,0,0,0,0,0] },
+                { time: '06:00', levels: [30,20,15,40,25,50,60] },
+                { time: '09:00', levels: [70,50,40,85,60,90,100] },
+                { time: '12:00', levels: [100,80,60,100,80,100,100] },
+                { time: '15:00', levels: [80,60,45,90,65,95,100] },
+                { time: '18:00', levels: [50,35,25,70,45,75,90] },
+                { time: '22:00', levels: [10,5,5,20,10,30,50] },
+                { time: '23:59', levels: [0,0,0,0,0,0,0] }
             ];
-            
             defaultPoints.forEach(point => {
-                scheduleData.push({
-                    time: point.time,
-                    levels: [...point.levels]
-                });
+                scheduleData.push({ time: point.time, levels: [...point.levels] });
             });
-            
             renderSchedulePoints();
             updateChart();
-            showToast('Reset to default schedule', 'info');
+            showToast('Reset to default', 'info');
         }
         
         // ==================== MANUAL CONTROL ====================
         function renderManualControls() {
             const container = document.getElementById('manualChannels');
             if (!container) return;
-            
             container.innerHTML = '';
             channels.forEach((ch, idx) => {
                 const itemDiv = document.createElement('div');
                 itemDiv.className = 'manual-item';
-                itemDiv.style.borderLeft = `4px solid ${ch.color}`;
-                
+                itemDiv.style.borderLeft = `3px solid ${ch.color}`;
                 itemDiv.innerHTML = `
-                    <label style="color: ${ch.color};">🎛️ ${ch.name}</label>
-                    <input type="number" 
-                           min="0" 
-                           max="100" 
-                           step="1" 
-                           value="0" 
-                           id="manual_${idx}"
+                    <label style="color:${ch.color};">${ch.name}</label>
+                    <input type="number" min="0" max="100" step="1" value="0" id="manual_${idx}"
                            onchange="sendManualControl(${idx}, this.value)">
-                    <small style="display: block; margin-top: 5px;">0-100%</small>
                 `;
                 container.appendChild(itemDiv);
             });
@@ -1011,15 +873,9 @@
                 showToast('MQTT not connected!', 'error');
                 return;
             }
-            
             const newLevel = parseInt(level);
             if (isNaN(newLevel)) return;
-            
-            client.publish(topicPrefix + '/manual', JSON.stringify({
-                channel: channel,
-                level: newLevel
-            }));
-            showToast(`${channels[channel].name} set to ${newLevel}%`, 'info');
+            client.publish(topicPrefix + '/manual', JSON.stringify({ channel: channel, level: newLevel }));
         }
         
         function setAllChannels(value) {
@@ -1030,161 +886,61 @@
                     sendManualControl(i, value);
                 }
             }
-            showToast(`All channels set to ${value}%`, 'success');
+            showToast(`All LEDs: ${value}%`, 'info');
         }
         
-        // ==================== SET MAX TEMPERATURE ====================
         function setMaxTemperature() {
             if (!client || !client.connected) {
                 showToast('MQTT not connected!', 'error');
                 return;
             }
-            
             const maxTemp = parseFloat(document.getElementById('maxTemp').value);
             if (isNaN(maxTemp) || maxTemp < 20 || maxTemp > 50) {
-                showToast('Please enter valid temperature (20-50°C)', 'error');
+                showToast('Temp must be 20-50°C', 'error');
                 return;
             }
-            
             client.publish(topicPrefix + '/maxTemp', JSON.stringify({ maxTemp: maxTemp }));
-            showToast(`✅ Max temperature set to ${maxTemp}°C`, 'success');
+            showToast(`Max temp: ${maxTemp}°C`, 'success');
         }
         
-        // ==================== UTILITIES ====================
         function showToast(message, type) {
-            // Create toast element
             const toast = document.createElement('div');
-            toast.style.position = 'fixed';
-            toast.style.bottom = '20px';
-            toast.style.right = '20px';
-            toast.style.padding = '12px 20px';
-            toast.style.borderRadius = '8px';
-            toast.style.color = 'white';
-            toast.style.zIndex = '10000';
-            toast.style.animation = 'slideIn 0.3s ease';
-            
-            if (type === 'success') toast.style.background = '#27ae60';
-            else if (type === 'error') toast.style.background = '#e74c3c';
-            else if (type === 'warning') toast.style.background = '#f39c12';
-            else toast.style.background = '#3498db';
-            
+            toast.style.cssText = `
+                position:fixed; bottom:20px; right:20px; padding:8px 16px; border-radius:8px;
+                color:white; z-index:10000; animation:slideIn 0.3s ease; font-size:12px;
+                background: ${type === 'success' ? '#27ae60' : (type === 'error' ? '#e74c3c' : (type === 'warning' ? '#f39c12' : '#3498db'))};
+            `;
             toast.textContent = message;
             document.body.appendChild(toast);
-            
             setTimeout(() => {
                 toast.style.animation = 'slideOut 0.3s ease';
                 setTimeout(() => toast.remove(), 300);
-            }, 3000);
-        }
-        
-        function playAlertSound() {
-            // Optional: play beep sound for overheat alert
-            try {
-                const audio = new Audio('data:audio/wav;base64,U3RlYWx0aCBzb3VuZA==');
-                audio.play().catch(e => console.log('Audio not supported'));
-            } catch(e) {}
+            }, 2000);
         }
         
         function initChart() {
             const ctx = document.getElementById('scheduleChart').getContext('2d');
             chart = new Chart(ctx, {
                 type: 'line',
-                data: {
-                    labels: [],
-                    datasets: []
-                },
+                data: { labels: [], datasets: [] },
                 options: {
                     responsive: true,
                     maintainAspectRatio: true,
-                    interaction: {
-                        mode: 'index',
-                        intersect: false,
-                    },
                     scales: {
-                        y: {
-                            beginAtZero: true,
-                            max: 100,
-                            title: {
-                                display: true,
-                                text: 'Light Intensity (%)',
-                                font: { size: 14, weight: 'bold' }
-                            },
-                            grid: { color: '#ddd' }
-                        },
-                        x: {
-                            title: {
-                                display: true,
-                                text: 'Time (24 Hours)',
-                                font: { size: 14, weight: 'bold' }
-                            },
-                            ticks: {
-                                maxRotation: 45,
-                                minRotation: 45,
-                                stepSize: 2,
-                                callback: function(val, index) {
-                                    return this.getLabelForValue(val);
-                                }
-                            }
-                        }
+                        y: { beginAtZero: true, max: 100, title: { display: true, text: 'Intensity (%)', font: { size: 12 } } },
+                        x: { title: { display: true, text: 'Time', font: { size: 12 } }, ticks: { maxRotation: 45, minRotation: 45, stepSize: 2 } }
                     },
-                    plugins: {
-                        legend: {
-                            position: 'bottom',
-                            labels: {
-                                font: { size: 10 },
-                                usePointStyle: true
-                            }
-                        },
-                        tooltip: {
-                            mode: 'index',
-                            intersect: false
-                        }
-                    }
+                    plugins: { legend: { position: 'bottom', labels: { font: { size: 10 } } } }
                 }
             });
         }
         
-        // Add CSS animations
-        const style = document.createElement('style');
-        style.textContent = `
-            @keyframes slideIn {
-                from {
-                    transform: translateX(100%);
-                    opacity: 0;
-                }
-                to {
-                    transform: translateX(0);
-                    opacity: 1;
-                }
-            }
-            @keyframes slideOut {
-                from {
-                    transform: translateX(0);
-                    opacity: 1;
-                }
-                to {
-                    transform: translateX(100%);
-                    opacity: 0;
-                }
-            }
-        `;
-        document.head.appendChild(style);
-        
-        // ==================== INITIALIZATION ====================
+        // ==================== INIT ====================
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('🚀 Dashboard initializing...');
             initChart();
             renderManualControls();
             initMQTT();
             resetToDefault();
-            showToast('Dashboard Ready!', 'success');
-            
-            // Auto refresh status every 5 seconds
-            setInterval(() => {
-                if (client && client.connected) {
-                    client.publish(topicPrefix + '/status/request', '');
-                }
-            }, 5000);
         });
     </script>
 </body>
