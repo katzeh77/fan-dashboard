@@ -974,4 +974,92 @@
                 return;
             }
             const maxTemp = parseFloat(document.getElementById('maxTemp').value);
-            if (isNaN
+            if (isNaN(maxTemp) || maxTemp < 20 || maxTemp > 50) {
+                showToast('Temperature must be between 20-50°C', 'error');
+                return;
+            }
+            client.publish(topicPrefix + '/maxTemp', JSON.stringify({ maxTemp: maxTemp }));
+            showToast(`✅ Max temperature set to ${maxTemp}°C`, 'success');
+        }
+        
+        function showToast(message, type) {
+            const toast = document.createElement('div');
+            toast.style.cssText = `
+                position: fixed; bottom: 20px; right: 20px; padding: 10px 20px; border-radius: 8px;
+                color: white; z-index: 10000; animation: slideIn 0.3s ease; font-size: 13px;
+                background: ${type === 'success' ? '#27ae60' : (type === 'error' ? '#e74c3c' : (type === 'warning' ? '#f39c12' : '#3498db'))};
+                box-shadow: 0 3px 10px rgba(0,0,0,0.2);
+            `;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            setTimeout(() => {
+                toast.style.animation = 'slideOut 0.3s ease';
+                setTimeout(() => toast.remove(), 300);
+            }, 2000);
+        }
+        
+        function initChart() {
+            const ctx = document.getElementById('scheduleChart').getContext('2d');
+            chart = new Chart(ctx, {
+                type: 'line',
+                data: { labels: [], datasets: [] },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    scales: {
+                        y: { beginAtZero: true, max: 100, title: { display: true, text: 'Intensity (%)', font: { size: 12 } } },
+                        x: { title: { display: true, text: 'Time (24 Hours)', font: { size: 12 } }, ticks: { maxRotation: 45, minRotation: 45, stepSize: 2 } }
+                    },
+                    plugins: { legend: { position: 'bottom', labels: { font: { size: 10 } } } }
+                }
+            });
+        }
+        
+        // ==================== INITIALIZATION ====================
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Page loaded, initializing...');
+            initChart();
+            renderManualControls();
+            initMQTT();
+            resetToDefault();
+            
+            // Attach event listeners to buttons (using IDs to ensure they work)
+            const btnAdd = document.getElementById('btnAddSchedule');
+            const btnSave = document.getElementById('btnSaveSchedule');
+            const btnLoad = document.getElementById('btnLoadSchedule');
+            const btnReset = document.getElementById('btnResetSchedule');
+            
+            if (btnAdd) {
+                btnAdd.onclick = function(e) {
+                    e.preventDefault();
+                    console.log('Add button clicked via ID');
+                    addSchedulePoint();
+                };
+            }
+            
+            if (btnSave) {
+                btnSave.onclick = function(e) {
+                    e.preventDefault();
+                    saveSchedule();
+                };
+            }
+            
+            if (btnLoad) {
+                btnLoad.onclick = function(e) {
+                    e.preventDefault();
+                    loadScheduleFromESP();
+                };
+            }
+            
+            if (btnReset) {
+                btnReset.onclick = function(e) {
+                    e.preventDefault();
+                    resetToDefault();
+                };
+            }
+            
+            console.log('Event listeners attached');
+        });
+    </script>
+</body>
+</html>
