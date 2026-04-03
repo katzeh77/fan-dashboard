@@ -71,7 +71,6 @@
             margin-top: 3px;
         }
 
-        /* 24-hour format indicator */
         .time-format {
             position: absolute;
             bottom: 5px;
@@ -491,10 +490,10 @@
                 <h3>📊 Lighting Schedule (24 Hours) - Format 00:00 s/d 23:59</h3>
                 <div id="schedulePoints"></div>
                 <div class="button-group">
-                    <button onclick="addSchedulePoint()" class="success">+ Add Schedule Point</button>
-                    <button onclick="saveSchedule()" class="info">💾 Save to ESP32</button>
-                    <button onclick="loadScheduleFromESP()" class="info">📥 Load from ESP32</button>
-                    <button onclick="resetToDefault()" class="danger">🔄 Reset Default</button>
+                    <button id="btnAddSchedule" class="success">+ Add Schedule Point</button>
+                    <button id="btnSaveSchedule" class="info">💾 Save to ESP32</button>
+                    <button id="btnLoadSchedule" class="info">📥 Load from ESP32</button>
+                    <button id="btnResetSchedule" class="danger">🔄 Reset Default</button>
                 </div>
             </div>
 
@@ -543,7 +542,6 @@
         // ==================== REAL TIME CLOCK (24-HOUR FORMAT) ====================
         function updateRealTimeClock() {
             const now = new Date();
-            // 24-hour format using getHours() which returns 0-23
             const hours = String(now.getHours()).padStart(2, '0');
             const minutes = String(now.getMinutes()).padStart(2, '0');
             const seconds = String(now.getSeconds()).padStart(2, '0');
@@ -658,20 +656,20 @@
             showToast(`Fan: ${fanMode === 'auto' ? 'Auto Mode' : (fanMode === 'manual_on' ? 'Manual ON' : 'Manual OFF')}`, 'info');
         }
         
-        // ==================== SCHEDULE FUNCTIONS (24-HOUR FORMAT) ====================
+        // ==================== SCHEDULE FUNCTIONS ====================
         function addSchedulePoint() {
-            console.log('Add schedule point clicked');
+            console.log('Add schedule point clicked - function called');
             
+            // Find a reasonable default time
             let newTime = '12:00';
             const existingTimes = scheduleData.map(p => p.time);
             
-            if (existingTimes.length > 0) {
-                const testTimes = ['00:00', '03:00', '06:00', '09:00', '12:00', '15:00', '18:00', '21:00'];
-                for (let tt of testTimes) {
-                    if (!existingTimes.includes(tt)) {
-                        newTime = tt;
-                        break;
-                    }
+            // Try to find unused time slot
+            const testTimes = ['00:00', '02:00', '04:00', '06:00', '08:00', '10:00', '12:00', '14:00', '16:00', '18:00', '20:00', '22:00'];
+            for (let tt of testTimes) {
+                if (!existingTimes.includes(tt)) {
+                    newTime = tt;
+                    break;
                 }
             }
             
@@ -681,10 +679,14 @@
                 levels: [...defaultLevels]
             });
             
+            // Sort by time
             scheduleData.sort((a, b) => a.time.localeCompare(b.time));
+            
+            // Re-render
             renderSchedulePoints();
             updateChart();
             showToast('Schedule point added at ' + newTime, 'success');
+            console.log('Total schedule points:', scheduleData.length);
         }
         
         function renderSchedulePoints() {
@@ -702,6 +704,7 @@
                 pointDiv.className = 'schedule-point';
                 pointDiv.setAttribute('data-index', idx);
                 
+                // Header with time and remove button
                 const headerDiv = document.createElement('div');
                 headerDiv.className = 'schedule-header';
                 
@@ -716,7 +719,10 @@
                 timeInput.step = '60';
                 timeInput.value = point.time;
                 timeInput.onchange = (function(i) {
-                    return function(e) { updateScheduleTime(i, e.target.value); };
+                    return function(e) { 
+                        console.log('Time changed for index', i, 'to', e.target.value);
+                        updateScheduleTime(i, e.target.value); 
+                    };
                 })(idx);
                 timeDiv.appendChild(timeLabel);
                 timeDiv.appendChild(timeInput);
@@ -726,12 +732,16 @@
                 removeBtn.className = 'danger';
                 removeBtn.style.padding = '4px 12px';
                 removeBtn.onclick = (function(i) {
-                    return function() { removeSchedulePoint(i); };
+                    return function() { 
+                        console.log('Remove clicked for index', i);
+                        removeSchedulePoint(i); 
+                    };
                 })(idx);
                 
                 headerDiv.appendChild(timeDiv);
                 headerDiv.appendChild(removeBtn);
                 
+                // Channel inputs
                 const channelsDiv = document.createElement('div');
                 channelsDiv.className = 'channel-inputs';
                 
@@ -751,7 +761,10 @@
                     input.step = 1;
                     input.value = point.levels[chIdx];
                     input.onchange = (function(pIdx, cIdx) {
-                        return function(e) { updateScheduleLevel(pIdx, cIdx, e.target.value); };
+                        return function(e) { 
+                            console.log('Level changed for point', pIdx, 'channel', cIdx, 'to', e.target.value);
+                            updateScheduleLevel(pIdx, cIdx, e.target.value); 
+                        };
                     })(idx, chIdx);
                     
                     itemDiv.appendChild(label);
@@ -811,7 +824,6 @@
                 pointRadius: 0
             }));
             
-            // Generate 24-hour data points (00:00 to 23:30, every 30 minutes)
             for (let hour = 0; hour < 24; hour++) {
                 for (let minute = 0; minute < 60; minute += 30) {
                     const timeStr = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
@@ -887,17 +899,13 @@
             scheduleData = [];
             const defaultPoints = [
                 { time: '00:00', levels: [0,0,0,0,0,0,0] },
-                { time: '05:00', levels: [5,3,2,10,5,15,20] },
-                { time: '06:30', levels: [30,20,15,40,25,50,60] },
-                { time: '08:00', levels: [60,45,35,75,55,80,85] },
-                { time: '10:00', levels: [85,65,50,90,70,95,100] },
+                { time: '06:00', levels: [30,20,15,40,25,50,60] },
+                { time: '09:00', levels: [70,50,40,85,60,90,100] },
                 { time: '12:00', levels: [100,80,60,100,80,100,100] },
-                { time: '14:00', levels: [90,70,55,95,75,95,100] },
-                { time: '16:00', levels: [70,50,40,85,60,85,90] },
-                { time: '18:00', levels: [40,25,20,60,40,65,75] },
-                { time: '20:00', levels: [15,10,8,30,15,40,50] },
-                { time: '22:00', levels: [5,3,2,10,5,20,25] },
-                { time: '23:30', levels: [0,0,0,0,0,0,0] }
+                { time: '15:00', levels: [80,60,45,90,65,95,100] },
+                { time: '18:00', levels: [50,35,25,70,45,75,90] },
+                { time: '22:00', levels: [10,5,5,20,10,30,50] },
+                { time: '23:59', levels: [0,0,0,0,0,0,0] }
             ];
             defaultPoints.forEach(point => {
                 scheduleData.push({ time: point.time, levels: [...point.levels] });
@@ -950,4 +958,20 @@
         }
         
         function setAllChannels(value) {
-            for
+            for (let i = 0; i < channels.length; i++) {
+                const input = document.getElementById(`manual_${i}`);
+                if (input) {
+                    input.value = value;
+                    sendManualControl(i, value);
+                }
+            }
+            showToast(`All channels set to ${value}%`, 'success');
+        }
+        
+        function setMaxTemperature() {
+            if (!client || !client.connected) {
+                showToast('MQTT not connected!', 'error');
+                return;
+            }
+            const maxTemp = parseFloat(document.getElementById('maxTemp').value);
+            if (isNaN
