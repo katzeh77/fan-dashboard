@@ -75,7 +75,6 @@
             padding: 20px;
         }
 
-        /* Status Panel */
         .status-panel {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
@@ -217,7 +216,6 @@
             background: white;
         }
 
-        /* Schedule Section */
         .schedule-section {
             background: #f8f9fa;
             border-radius: 12px;
@@ -255,7 +253,6 @@
             width: 100px;
         }
 
-        /* Channel inputs - 1 baris compact dengan label lengkap */
         .channel-inputs {
             display: flex;
             flex-wrap: wrap;
@@ -318,7 +315,6 @@
         button.info { background: #3498db; }
         button.warning { background: #f39c12; }
 
-        /* Chart Container */
         .chart-container {
             background: #f8f9fa;
             border-radius: 12px;
@@ -336,7 +332,6 @@
             max-height: 400px;
         }
 
-        /* Manual Control */
         .manual-control {
             margin-top: 25px;
             padding: 15px;
@@ -380,7 +375,6 @@
             font-size: 12px;
         }
 
-        /* Current Levels */
         .current-levels {
             display: flex;
             flex-wrap: wrap;
@@ -403,7 +397,6 @@
             font-weight: bold;
         }
 
-        /* Responsive */
         @media (max-width: 768px) {
             .channel-item { padding: 4px 8px; }
             .channel-item label { font-size: 10px; }
@@ -414,13 +407,6 @@
             .header { text-align: center; }
         }
 
-        /* Scrollbar */
-        ::-webkit-scrollbar { width: 8px; height: 8px; }
-        ::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 10px; }
-        ::-webkit-scrollbar-thumb { background: #888; border-radius: 10px; }
-        ::-webkit-scrollbar-thumb:hover { background: #555; }
-
-        /* Toast animation */
         @keyframes slideIn {
             from { transform: translateX(100%); opacity: 0; }
             to { transform: translateX(0); opacity: 1; }
@@ -445,7 +431,6 @@
         </div>
 
         <div class="content">
-            <!-- Status Panel -->
             <div class="status-panel">
                 <div class="status-card">
                     <h3>🌡️ Temperature Monitor</h3>
@@ -486,13 +471,11 @@
                 </div>
             </div>
 
-            <!-- Current LED Levels -->
             <div class="status-card" style="margin-bottom: 20px;">
                 <h3>💡 Real-time LED Output</h3>
                 <div id="currentLevels" class="current-levels"></div>
             </div>
 
-            <!-- Schedule Section -->
             <div class="schedule-section">
                 <h3>📊 Lighting Schedule (24 Hours)</h3>
                 <div id="schedulePoints"></div>
@@ -504,7 +487,6 @@
                 </div>
             </div>
 
-            <!-- Chart -->
             <div class="chart-container">
                 <h3>📈 Schedule Visualization (with Smooth Fading)</h3>
                 <canvas id="scheduleChart"></canvas>
@@ -513,7 +495,6 @@
                 </p>
             </div>
 
-            <!-- Manual Control -->
             <div class="manual-control">
                 <h3>🎮 Manual LED Override</h3>
                 <p style="font-size: 11px; color: #7f8c8d; margin-bottom: 10px;">
@@ -538,7 +519,6 @@
         let scheduleData = [];
         let chart = null;
         
-        // Channel configurations with FULL NAMES (tidak disingkat)
         const channels = [
             { name: 'Royal Blue', color: '#4169E1' },
             { name: 'Blue', color: '#0000FF' },
@@ -566,24 +546,22 @@
             document.getElementById('clockDate').textContent = `${dayName}, ${date} ${month} ${year}`;
         }
         
-        // Update clock every second
         setInterval(updateRealTimeClock, 1000);
         updateRealTimeClock();
         
         // ==================== MQTT FUNCTIONS ====================
         function initMQTT() {
-            console.log('🔄 Connecting to MQTT broker...');
+            console.log('Connecting to MQTT...');
             client = mqtt.connect(mqttBroker, {
                 keepalive: 60,
                 reconnectPeriod: 5000
             });
             
             client.on('connect', () => {
-                console.log('✅ Connected to MQTT');
+                console.log('Connected to MQTT');
                 showToast('MQTT Connected!', 'success');
                 client.subscribe(topicPrefix + '/status');
                 client.subscribe(topicPrefix + '/fan/response');
-                setTimeout(() => loadScheduleFromESP(), 1000);
             });
             
             client.on('message', (topic, message) => {
@@ -605,7 +583,6 @@
             });
         }
         
-        // ==================== UI UPDATE ====================
         function updateUI(data) {
             document.getElementById('temp1').textContent = data.temperature1 ? data.temperature1.toFixed(1) + '°C' : '--.-°C';
             document.getElementById('temp2').textContent = data.temperature2 ? data.temperature2.toFixed(1) + '°C' : '--.-°C';
@@ -613,8 +590,7 @@
             
             if (data.fanState !== undefined) {
                 const fanStatus = data.fanState ? 'ON 🔥' : 'OFF ❄️';
-                const modeText = currentFanMode === 'auto' ? 'Auto' : (currentFanMode === 'manual_on' ? 'Manual ON' : 'Manual OFF');
-                document.getElementById('fanStatusDisplay').innerHTML = `Fan: ${fanStatus} | Mode: ${modeText}`;
+                document.getElementById('fanStatusDisplay').innerHTML = `Fan: ${fanStatus}`;
             }
             
             if (data.isFading) {
@@ -672,16 +648,36 @@
         
         // ==================== SCHEDULE FUNCTIONS ====================
         function addSchedulePoint() {
-            let defaultTime = '12:00';
-            if (scheduleData.length > 0) {
-                defaultTime = '12:00';
+            console.log('Add schedule point clicked');
+            
+            // Find time that doesn't exist yet
+            let newTime = '12:00';
+            const existingTimes = scheduleData.map(p => p.time);
+            
+            if (existingTimes.length > 0) {
+                // Try to find a time that's not used
+                const testTimes = ['06:00', '09:00', '12:00', '15:00', '18:00', '21:00'];
+                for (let tt of testTimes) {
+                    if (!existingTimes.includes(tt)) {
+                        newTime = tt;
+                        break;
+                    }
+                }
             }
+            
             const defaultLevels = channels.map(() => 0);
-            scheduleData.push({ time: defaultTime, levels: [...defaultLevels] });
+            scheduleData.push({
+                time: newTime,
+                levels: [...defaultLevels]
+            });
+            
+            // Sort by time
             scheduleData.sort((a, b) => a.time.localeCompare(b.time));
+            
+            // Re-render
             renderSchedulePoints();
             updateChart();
-            showToast('Schedule point added', 'success');
+            showToast('Schedule point added at ' + newTime, 'success');
         }
         
         function renderSchedulePoints() {
@@ -697,19 +693,39 @@
             scheduleData.forEach((point, idx) => {
                 const pointDiv = document.createElement('div');
                 pointDiv.className = 'schedule-point';
+                pointDiv.setAttribute('data-index', idx);
                 
-                // Header with time and remove button
+                // Header
                 const headerDiv = document.createElement('div');
                 headerDiv.className = 'schedule-header';
-                headerDiv.innerHTML = `
-                    <div class="time-input">
-                        <span style="font-weight:bold; font-size:12px;">🕐 Time:</span>
-                        <input type="time" value="${point.time}" onchange="updateScheduleTime(${idx}, this.value)">
-                    </div>
-                    <button onclick="removeSchedulePoint(${idx})" class="danger" style="padding:4px 12px;">🗑 Remove</button>
-                `;
                 
-                // Channel inputs in one row (compact) with FULL NAMES
+                const timeDiv = document.createElement('div');
+                timeDiv.className = 'time-input';
+                const timeLabel = document.createElement('span');
+                timeLabel.style.fontWeight = 'bold';
+                timeLabel.style.fontSize = '12px';
+                timeLabel.textContent = '🕐 Time: ';
+                const timeInput = document.createElement('input');
+                timeInput.type = 'time';
+                timeInput.value = point.time;
+                timeInput.onchange = (function(i) {
+                    return function(e) { updateScheduleTime(i, e.target.value); };
+                })(idx);
+                timeDiv.appendChild(timeLabel);
+                timeDiv.appendChild(timeInput);
+                
+                const removeBtn = document.createElement('button');
+                removeBtn.textContent = '🗑 Remove';
+                removeBtn.className = 'danger';
+                removeBtn.style.padding = '4px 12px';
+                removeBtn.onclick = (function(i) {
+                    return function() { removeSchedulePoint(i); };
+                })(idx);
+                
+                headerDiv.appendChild(timeDiv);
+                headerDiv.appendChild(removeBtn);
+                
+                // Channels
                 const channelsDiv = document.createElement('div');
                 channelsDiv.className = 'channel-inputs';
                 
@@ -717,11 +733,23 @@
                     const itemDiv = document.createElement('div');
                     itemDiv.className = 'channel-item';
                     itemDiv.style.borderLeftColor = ch.color;
-                    itemDiv.innerHTML = `
-                        <label style="color:${ch.color};">💡 ${ch.name}</label>
-                        <input type="number" min="0" max="100" step="1" value="${point.levels[chIdx]}" 
-                               onchange="updateScheduleLevel(${idx}, ${chIdx}, this.value)">
-                    `;
+                    
+                    const label = document.createElement('label');
+                    label.style.color = ch.color;
+                    label.textContent = `💡 ${ch.name}`;
+                    
+                    const input = document.createElement('input');
+                    input.type = 'number';
+                    input.min = 0;
+                    input.max = 100;
+                    input.step = 1;
+                    input.value = point.levels[chIdx];
+                    input.onchange = (function(pIdx, cIdx) {
+                        return function(e) { updateScheduleLevel(pIdx, cIdx, e.target.value); };
+                    })(idx, chIdx);
+                    
+                    itemDiv.appendChild(label);
+                    itemDiv.appendChild(input);
                     channelsDiv.appendChild(itemDiv);
                 });
                 
@@ -844,23 +872,21 @@
             showToast('✅ Schedule saved to ESP32!', 'success');
         }
         
-        function loadScheduleFromESP() { resetToDefault(); }
+        function loadScheduleFromESP() { 
+            resetToDefault(); 
+        }
         
         function resetToDefault() {
             scheduleData = [];
             const defaultPoints = [
                 { time: '00:00', levels: [0,0,0,0,0,0,0] },
-                { time: '05:00', levels: [5,3,2,10,5,15,20] },
-                { time: '06:30', levels: [30,20,15,40,25,50,60] },
-                { time: '08:00', levels: [60,45,35,75,55,80,85] },
-                { time: '10:00', levels: [85,65,50,90,70,95,100] },
+                { time: '06:00', levels: [30,20,15,40,25,50,60] },
+                { time: '09:00', levels: [70,50,40,85,60,90,100] },
                 { time: '12:00', levels: [100,80,60,100,80,100,100] },
-                { time: '14:00', levels: [90,70,55,95,75,95,100] },
-                { time: '16:00', levels: [70,50,40,85,60,85,90] },
-                { time: '18:00', levels: [40,25,20,60,40,65,75] },
-                { time: '20:00', levels: [15,10,8,30,15,40,50] },
-                { time: '22:00', levels: [5,3,2,10,5,20,25] },
-                { time: '23:30', levels: [0,0,0,0,0,0,0] }
+                { time: '15:00', levels: [80,60,45,90,65,95,100] },
+                { time: '18:00', levels: [50,35,25,70,45,75,90] },
+                { time: '22:00', levels: [10,5,5,20,10,30,50] },
+                { time: '23:59', levels: [0,0,0,0,0,0,0] }
             ];
             defaultPoints.forEach(point => {
                 scheduleData.push({ time: point.time, levels: [...point.levels] });
@@ -879,11 +905,24 @@
                 const itemDiv = document.createElement('div');
                 itemDiv.className = 'manual-item';
                 itemDiv.style.borderLeft = `3px solid ${ch.color}`;
-                itemDiv.innerHTML = `
-                    <label style="color:${ch.color};">🎛️ ${ch.name}</label>
-                    <input type="number" min="0" max="100" step="1" value="0" id="manual_${idx}"
-                           onchange="sendManualControl(${idx}, this.value)">
-                `;
+                
+                const label = document.createElement('label');
+                label.style.color = ch.color;
+                label.textContent = `🎛️ ${ch.name}`;
+                
+                const input = document.createElement('input');
+                input.type = 'number';
+                input.min = 0;
+                input.max = 100;
+                input.step = 1;
+                input.value = 0;
+                input.id = `manual_${idx}`;
+                input.onchange = (function(i) {
+                    return function(e) { sendManualControl(i, e.target.value); };
+                })(idx);
+                
+                itemDiv.appendChild(label);
+                itemDiv.appendChild(input);
                 container.appendChild(itemDiv);
             });
         }
@@ -924,7 +963,6 @@
             showToast(`✅ Max temperature set to ${maxTemp}°C`, 'success');
         }
         
-        // ==================== TOAST NOTIFICATION ====================
         function showToast(message, type) {
             const toast = document.createElement('div');
             toast.style.cssText = `
