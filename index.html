@@ -252,13 +252,29 @@
             margin-bottom: 12px;
         }
 
-        .time-input input {
-            padding: 6px 10px;
-            border: 2px solid #ddd;
-            border-radius: 6px;
-            font-size: 13px;
+        /* Custom time selector 24-hour format */
+        .time-selector {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: #f0f0f0;
+            padding: 4px 10px;
+            border-radius: 8px;
+        }
+
+        .time-selector input {
+            width: 50px;
+            padding: 6px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            text-align: center;
+            font-size: 14px;
             font-weight: bold;
-            width: 100px;
+        }
+
+        .time-selector span {
+            font-weight: bold;
+            font-size: 14px;
         }
 
         .channel-inputs {
@@ -414,6 +430,7 @@
             .real-time-clock { position: relative; top: 0; right: 0; margin-top: 10px; display: inline-block; }
             .header { text-align: center; }
             .time-format { position: relative; text-align: center; margin-top: 5px; }
+            .time-selector input { width: 45px; }
         }
 
         @keyframes slideIn {
@@ -656,37 +673,49 @@
             showToast(`Fan: ${fanMode === 'auto' ? 'Auto Mode' : (fanMode === 'manual_on' ? 'Manual ON' : 'Manual OFF')}`, 'info');
         }
         
+        // ==================== FORMAT TIME 24 JAM ====================
+        function formatTime24(hour, minute) {
+            return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+        }
+        
+        function parseTime24(timeStr) {
+            const parts = timeStr.split(':');
+            return {
+                hour: parseInt(parts[0]),
+                minute: parseInt(parts[1])
+            };
+        }
+        
         // ==================== SCHEDULE FUNCTIONS ====================
         function addSchedulePoint() {
-            console.log('Add schedule point clicked - function called');
+            console.log('Add schedule point clicked');
             
-            // Find a reasonable default time
-            let newTime = '12:00';
+            let newHour = 12;
+            let newMinute = 0;
             const existingTimes = scheduleData.map(p => p.time);
             
-            // Try to find unused time slot
-            const testTimes = ['00:00', '02:00', '04:00', '06:00', '08:00', '10:00', '12:00', '14:00', '16:00', '18:00', '20:00', '22:00'];
-            for (let tt of testTimes) {
-                if (!existingTimes.includes(tt)) {
-                    newTime = tt;
+            // Find unused hour
+            for (let h = 0; h < 24; h++) {
+                const timeStr = formatTime24(h, 0);
+                if (!existingTimes.includes(timeStr)) {
+                    newHour = h;
                     break;
                 }
             }
             
+            const newTime = formatTime24(newHour, newMinute);
             const defaultLevels = channels.map(() => 0);
             scheduleData.push({
                 time: newTime,
+                hour: newHour,
+                minute: newMinute,
                 levels: [...defaultLevels]
             });
             
-            // Sort by time
             scheduleData.sort((a, b) => a.time.localeCompare(b.time));
-            
-            // Re-render
             renderSchedulePoints();
             updateChart();
             showToast('Schedule point added at ' + newTime, 'success');
-            console.log('Total schedule points:', scheduleData.length);
         }
         
         function renderSchedulePoints() {
@@ -700,42 +729,86 @@
             }
             
             scheduleData.forEach((point, idx) => {
+                const parsed = parseTime24(point.time);
+                const hour = parsed.hour;
+                const minute = parsed.minute;
+                
                 const pointDiv = document.createElement('div');
                 pointDiv.className = 'schedule-point';
                 pointDiv.setAttribute('data-index', idx);
                 
-                // Header with time and remove button
+                // Header dengan selector waktu 24 jam (tanpa AM/PM)
                 const headerDiv = document.createElement('div');
                 headerDiv.className = 'schedule-header';
                 
                 const timeDiv = document.createElement('div');
-                timeDiv.className = 'time-input';
-                const timeLabel = document.createElement('span');
-                timeLabel.style.fontWeight = 'bold';
-                timeLabel.style.fontSize = '12px';
-                timeLabel.textContent = '🕐 Time (24h): ';
-                const timeInput = document.createElement('input');
-                timeInput.type = 'time';
-                timeInput.step = '60';
-                timeInput.value = point.time;
-                timeInput.onchange = (function(i) {
-                    return function(e) { 
-                        console.log('Time changed for index', i, 'to', e.target.value);
-                        updateScheduleTime(i, e.target.value); 
+                timeDiv.className = 'time-selector';
+                
+                const hourLabel = document.createElement('span');
+                hourLabel.textContent = 'Jam:';
+                hourLabel.style.fontSize = '12px';
+                
+                const hourInput = document.createElement('input');
+                hourInput.type = 'number';
+                hourInput.min = 0;
+                hourInput.max = 23;
+                hourInput.step = 1;
+                hourInput.value = hour;
+                hourInput.style.width = '50px';
+                hourInput.onchange = (function(i) {
+                    return function(e) {
+                        let val = parseInt(e.target.value);
+                        if (isNaN(val)) val = 0;
+                        val = Math.min(23, Math.max(0, val));
+                        const newTime = formatTime24(val, minute);
+                        updateScheduleTime(i, newTime);
+                        // Update minute input value
+                        const minuteInput = document.querySelector(`#minute_input_${i}`);
+                        if (minuteInput) minuteInput.value = minute;
                     };
                 })(idx);
-                timeDiv.appendChild(timeLabel);
-                timeDiv.appendChild(timeInput);
+                
+                const minuteLabel = document.createElement('span');
+                minuteLabel.textContent = 'Menit:';
+                minuteLabel.style.fontSize = '12px';
+                
+                const minuteInput = document.createElement('input');
+                minuteInput.type = 'number';
+                minuteInput.min = 0;
+                minuteInput.max = 59;
+                minuteInput.step = 1;
+                minuteInput.value = minute;
+                minuteInput.style.width = '50px';
+                minuteInput.id = `minute_input_${idx}`;
+                minuteInput.onchange = (function(i) {
+                    return function(e) {
+                        let val = parseInt(e.target.value);
+                        if (isNaN(val)) val = 0;
+                        val = Math.min(59, Math.max(0, val));
+                        const newTime = formatTime24(hour, val);
+                        updateScheduleTime(i, newTime);
+                        // Update hour input value
+                        const hourInput = document.querySelector(`#hour_input_${i}`);
+                        if (hourInput) hourInput.value = hour;
+                    };
+                })(idx);
+                
+                const timeText = document.createElement('span');
+                timeText.textContent = '⏰';
+                timeText.style.fontSize = '14px';
+                
+                timeDiv.appendChild(hourLabel);
+                timeDiv.appendChild(hourInput);
+                timeDiv.appendChild(minuteLabel);
+                timeDiv.appendChild(minuteInput);
+                timeDiv.appendChild(timeText);
                 
                 const removeBtn = document.createElement('button');
                 removeBtn.textContent = '🗑 Remove';
                 removeBtn.className = 'danger';
                 removeBtn.style.padding = '4px 12px';
                 removeBtn.onclick = (function(i) {
-                    return function() { 
-                        console.log('Remove clicked for index', i);
-                        removeSchedulePoint(i); 
-                    };
+                    return function() { removeSchedulePoint(i); };
                 })(idx);
                 
                 headerDiv.appendChild(timeDiv);
@@ -762,7 +835,6 @@
                     input.value = point.levels[chIdx];
                     input.onchange = (function(pIdx, cIdx) {
                         return function(e) { 
-                            console.log('Level changed for point', pIdx, 'channel', cIdx, 'to', e.target.value);
                             updateScheduleLevel(pIdx, cIdx, e.target.value); 
                         };
                     })(idx, chIdx);
@@ -826,7 +898,7 @@
             
             for (let hour = 0; hour < 24; hour++) {
                 for (let minute = 0; minute < 60; minute += 30) {
-                    const timeStr = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+                    const timeStr = formatTime24(hour, minute);
                     timeLabels.push(timeStr);
                     const levels = getInterpolatedLevels(timeStr);
                     datasets.forEach((ds, idx) => ds.data.push(levels[idx]));
@@ -881,11 +953,14 @@
             }
             const scheduleForESP = {
                 count: scheduleData.length,
-                schedules: scheduleData.map(point => ({
-                    hour: parseInt(point.time.split(':')[0]),
-                    minute: parseInt(point.time.split(':')[1]),
-                    levels: point.levels.map(l => parseFloat(l))
-                }))
+                schedules: scheduleData.map(point => {
+                    const parsed = parseTime24(point.time);
+                    return {
+                        hour: parsed.hour,
+                        minute: parsed.minute,
+                        levels: point.levels.map(l => parseFloat(l))
+                    };
+                })
             };
             client.publish(topicPrefix + '/schedule', JSON.stringify(scheduleForESP));
             showToast('✅ Schedule saved to ESP32!', 'success');
@@ -898,17 +973,22 @@
         function resetToDefault() {
             scheduleData = [];
             const defaultPoints = [
-                { time: '00:00', levels: [0,0,0,0,0,0,0] },
-                { time: '06:00', levels: [30,20,15,40,25,50,60] },
-                { time: '09:00', levels: [70,50,40,85,60,90,100] },
-                { time: '12:00', levels: [100,80,60,100,80,100,100] },
-                { time: '15:00', levels: [80,60,45,90,65,95,100] },
-                { time: '18:00', levels: [50,35,25,70,45,75,90] },
-                { time: '22:00', levels: [10,5,5,20,10,30,50] },
-                { time: '23:59', levels: [0,0,0,0,0,0,0] }
+                { hour: 0, minute: 0, levels: [0,0,0,0,0,0,0] },
+                { hour: 6, minute: 0, levels: [30,20,15,40,25,50,60] },
+                { hour: 9, minute: 0, levels: [70,50,40,85,60,90,100] },
+                { hour: 12, minute: 0, levels: [100,80,60,100,80,100,100] },
+                { hour: 15, minute: 0, levels: [80,60,45,90,65,95,100] },
+                { hour: 18, minute: 0, levels: [50,35,25,70,45,75,90] },
+                { hour: 22, minute: 0, levels: [10,5,5,20,10,30,50] },
+                { hour: 23, minute: 59, levels: [0,0,0,0,0,0,0] }
             ];
             defaultPoints.forEach(point => {
-                scheduleData.push({ time: point.time, levels: [...point.levels] });
+                scheduleData.push({ 
+                    time: formatTime24(point.hour, point.minute),
+                    hour: point.hour,
+                    minute: point.minute,
+                    levels: [...point.levels] 
+                });
             });
             renderSchedulePoints();
             updateChart();
@@ -1008,7 +1088,17 @@
                     maintainAspectRatio: true,
                     scales: {
                         y: { beginAtZero: true, max: 100, title: { display: true, text: 'Intensity (%)', font: { size: 12 } } },
-                        x: { title: { display: true, text: 'Time (24 Hours)', font: { size: 12 } }, ticks: { maxRotation: 45, minRotation: 45, stepSize: 2 } }
+                        x: { 
+                            title: { display: true, text: 'Time (24 Hours)', font: { size: 12 } }, 
+                            ticks: { 
+                                maxRotation: 45, 
+                                minRotation: 45, 
+                                stepSize: 2,
+                                callback: function(val, index) {
+                                    return this.getLabelForValue(val);
+                                }
+                            } 
+                        }
                     },
                     plugins: { legend: { position: 'bottom', labels: { font: { size: 10 } } } }
                 }
@@ -1017,48 +1107,24 @@
         
         // ==================== INITIALIZATION ====================
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('Page loaded, initializing...');
+            console.log('Page loaded, initializing 24-hour format dashboard...');
             initChart();
             renderManualControls();
             initMQTT();
             resetToDefault();
             
-            // Attach event listeners to buttons (using IDs to ensure they work)
+            // Attach event listeners
             const btnAdd = document.getElementById('btnAddSchedule');
             const btnSave = document.getElementById('btnSaveSchedule');
             const btnLoad = document.getElementById('btnLoadSchedule');
             const btnReset = document.getElementById('btnResetSchedule');
             
-            if (btnAdd) {
-                btnAdd.onclick = function(e) {
-                    e.preventDefault();
-                    console.log('Add button clicked via ID');
-                    addSchedulePoint();
-                };
-            }
+            if (btnAdd) btnAdd.onclick = function(e) { e.preventDefault(); addSchedulePoint(); };
+            if (btnSave) btnSave.onclick = function(e) { e.preventDefault(); saveSchedule(); };
+            if (btnLoad) btnLoad.onclick = function(e) { e.preventDefault(); loadScheduleFromESP(); };
+            if (btnReset) btnReset.onclick = function(e) { e.preventDefault(); resetToDefault(); };
             
-            if (btnSave) {
-                btnSave.onclick = function(e) {
-                    e.preventDefault();
-                    saveSchedule();
-                };
-            }
-            
-            if (btnLoad) {
-                btnLoad.onclick = function(e) {
-                    e.preventDefault();
-                    loadScheduleFromESP();
-                };
-            }
-            
-            if (btnReset) {
-                btnReset.onclick = function(e) {
-                    e.preventDefault();
-                    resetToDefault();
-                };
-            }
-            
-            console.log('Event listeners attached');
+            console.log('Dashboard ready - 24 hour format');
         });
     </script>
 </body>
