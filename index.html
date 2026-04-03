@@ -255,7 +255,7 @@
             width: 100px;
         }
 
-        /* Channel inputs - 1 baris compact */
+        /* Channel inputs - 1 baris compact dengan label lengkap */
         .channel-inputs {
             display: flex;
             flex-wrap: wrap;
@@ -266,9 +266,9 @@
         .channel-item {
             display: inline-flex;
             align-items: center;
-            gap: 5px;
+            gap: 6px;
             background: #f8f9fa;
-            padding: 4px 8px;
+            padding: 4px 10px;
             border-radius: 20px;
             border-left: 3px solid;
             font-size: 11px;
@@ -276,13 +276,13 @@
 
         .channel-item label {
             font-weight: bold;
-            font-size: 10px;
+            font-size: 11px;
             white-space: nowrap;
         }
 
         .channel-item input {
-            width: 50px;
-            padding: 4px;
+            width: 55px;
+            padding: 4px 6px;
             border: 1px solid #ddd;
             border-radius: 4px;
             font-size: 11px;
@@ -353,27 +353,27 @@
         .manual-grid {
             display: flex;
             flex-wrap: wrap;
-            gap: 8px;
+            gap: 10px;
             margin-top: 10px;
         }
 
         .manual-item {
             background: white;
-            padding: 5px 10px;
-            border-radius: 20px;
+            padding: 6px 12px;
+            border-radius: 25px;
             display: inline-flex;
             align-items: center;
-            gap: 8px;
+            gap: 10px;
         }
 
         .manual-item label {
             font-weight: bold;
-            font-size: 11px;
+            font-size: 12px;
         }
 
         .manual-item input {
-            width: 55px;
-            padding: 5px;
+            width: 60px;
+            padding: 5px 8px;
             border: 1px solid #ddd;
             border-radius: 4px;
             text-align: center;
@@ -384,19 +384,19 @@
         .current-levels {
             display: flex;
             flex-wrap: wrap;
-            gap: 8px;
+            gap: 10px;
             margin-top: 10px;
         }
 
         .level-item {
             text-align: center;
-            padding: 5px 10px;
+            padding: 6px 12px;
             background: white;
-            border-radius: 20px;
-            font-size: 11px;
+            border-radius: 25px;
+            font-size: 12px;
             display: inline-flex;
             align-items: center;
-            gap: 5px;
+            gap: 8px;
         }
 
         .level-item strong {
@@ -405,12 +405,20 @@
 
         /* Responsive */
         @media (max-width: 768px) {
-            .channel-item input { width: 45px; }
-            .manual-item input { width: 50px; }
+            .channel-item { padding: 4px 8px; }
+            .channel-item label { font-size: 10px; }
+            .channel-item input { width: 50px; }
+            .manual-item input { width: 55px; }
             .clock-time { font-size: 16px; }
             .real-time-clock { position: relative; top: 0; right: 0; margin-top: 10px; display: inline-block; }
             .header { text-align: center; }
         }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb { background: #888; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #555; }
 
         /* Toast animation */
         @keyframes slideIn {
@@ -444,17 +452,17 @@
                     <div class="temp-display">
                         <div class="temp-item">
                             <div class="temp-value" id="temp1">--.-°C</div>
-                            <div class="temp-label">🌡️ Upper</div>
+                            <div class="temp-label">🌡️ Upper Temperature</div>
                         </div>
                         <div class="temp-item">
                             <div class="temp-value" id="temp2">--.-°C</div>
-                            <div class="temp-label">🌡️ Lower</div>
+                            <div class="temp-label">🌡️ Lower Temperature</div>
                         </div>
                     </div>
                     <div class="max-temp-control">
-                        <label>⚠️ Max Temperature Limit</label>
+                        <label>⚠️ Maximum Temperature Limit</label>
                         <input type="number" id="maxTemp" step="0.5" value="35.0">
-                        <button onclick="setMaxTemperature()" class="info">Set Limit</button>
+                        <button onclick="setMaxTemperature()" class="info">Set Safety Limit</button>
                     </div>
                     <div class="warning" id="warning">
                         ⚠️ <span id="warningMsg"></span>
@@ -464,13 +472,13 @@
                 <div class="status-card">
                     <h3>💨 System Status</h3>
                     <div class="fan-control">
-                        <h4>Cooling Fan</h4>
+                        <h4>Cooling Fan Controller</h4>
                         <div class="fan-buttons">
-                            <button onclick="setFan(1)" class="warning">🔴 ON</button>
-                            <button onclick="setFan(0)" class="info">🔵 OFF</button>
-                            <button onclick="setFan(2)" class="success">🟢 Auto</button>
+                            <button onclick="setFan(1)" class="warning">🔴 Manual ON</button>
+                            <button onclick="setFan(0)" class="info">🔵 Manual OFF</button>
+                            <button onclick="setFan(2)" class="success">🟢 Auto Mode</button>
                         </div>
-                        <div class="fan-status auto" id="fanStatusDisplay">Mode: Auto</div>
+                        <div class="fan-status auto" id="fanStatusDisplay">Mode: Loading...</div>
                     </div>
                     <div class="fading-status" id="fadingStatus">
                         🌅 Fading: Active
@@ -489,10 +497,10 @@
                 <h3>📊 Lighting Schedule (24 Hours)</h3>
                 <div id="schedulePoints"></div>
                 <div class="button-group">
-                    <button onclick="addSchedulePoint()" class="success">+ Add Point</button>
-                    <button onclick="saveSchedule()" class="info">💾 Save</button>
-                    <button onclick="loadScheduleFromESP()" class="info">📥 Load</button>
-                    <button onclick="resetToDefault()" class="danger">🔄 Reset</button>
+                    <button onclick="addSchedulePoint()" class="success">+ Add Schedule Point</button>
+                    <button onclick="saveSchedule()" class="info">💾 Save to ESP32</button>
+                    <button onclick="loadScheduleFromESP()" class="info">📥 Load from ESP32</button>
+                    <button onclick="resetToDefault()" class="danger">🔄 Reset Default</button>
                 </div>
             </div>
 
@@ -500,14 +508,20 @@
             <div class="chart-container">
                 <h3>📈 Schedule Visualization (with Smooth Fading)</h3>
                 <canvas id="scheduleChart"></canvas>
+                <p style="text-align: center; margin-top: 10px; font-size: 11px; color: #7f8c8d;">
+                    *Grafik menunjukkan intensitas cahaya setiap channel sepanjang 24 jam dengan efek fading halus
+                </p>
             </div>
 
             <!-- Manual Control -->
             <div class="manual-control">
                 <h3>🎮 Manual LED Override</h3>
+                <p style="font-size: 11px; color: #7f8c8d; margin-bottom: 10px;">
+                    *Pengaturan manual akan mengganggu jadwal otomatis sementara
+                </p>
                 <div class="manual-grid" id="manualChannels"></div>
                 <div class="button-group" style="margin-top: 12px;">
-                    <button onclick="setAllChannels(0)" class="danger">All OFF</button>
+                    <button onclick="setAllChannels(0)" class="danger">All OFF (0%)</button>
                     <button onclick="setAllChannels(50)" class="info">All 50%</button>
                     <button onclick="setAllChannels(100)" class="success">All 100%</button>
                 </div>
@@ -524,15 +538,15 @@
         let scheduleData = [];
         let chart = null;
         
-        // Channel configurations
+        // Channel configurations with FULL NAMES (tidak disingkat)
         const channels = [
-            { name: 'RB', color: '#4169E1', fullName: 'Royal Blue' },
-            { name: 'BL', color: '#0000FF', fullName: 'Blue' },
-            { name: 'VI', color: '#8B00FF', fullName: 'Violet' },
-            { name: 'RD', color: '#FF0000', fullName: 'Red' },
-            { name: 'GN', color: '#00FF00', fullName: 'Green' },
-            { name: 'WH', color: '#FFFFFF', fullName: 'White', textColor: '#333' },
-            { name: 'SU', color: '#FFA500', fullName: 'Sump' }
+            { name: 'Royal Blue', color: '#4169E1' },
+            { name: 'Blue', color: '#0000FF' },
+            { name: 'Violet', color: '#8B00FF' },
+            { name: 'Red', color: '#FF0000' },
+            { name: 'Green', color: '#00FF00' },
+            { name: 'White', color: '#FFFFFF', textColor: '#333' },
+            { name: 'Sump', color: '#FFA500' }
         ];
         
         // ==================== REAL TIME CLOCK ====================
@@ -558,14 +572,14 @@
         
         // ==================== MQTT FUNCTIONS ====================
         function initMQTT() {
-            console.log('Connecting to MQTT...');
+            console.log('🔄 Connecting to MQTT broker...');
             client = mqtt.connect(mqttBroker, {
                 keepalive: 60,
                 reconnectPeriod: 5000
             });
             
             client.on('connect', () => {
-                console.log('Connected to MQTT');
+                console.log('✅ Connected to MQTT');
                 showToast('MQTT Connected!', 'success');
                 client.subscribe(topicPrefix + '/status');
                 client.subscribe(topicPrefix + '/fan/response');
@@ -604,18 +618,18 @@
             }
             
             if (data.isFading) {
-                document.getElementById('fadingStatus').innerHTML = '🌅 Fading in progress... Smooth transition';
+                document.getElementById('fadingStatus').innerHTML = '🌅 Fading in progress... Smooth transition active';
                 document.getElementById('fadingStatus').style.background = '#fff3cd';
                 document.getElementById('fadingStatus').style.color = '#856404';
             } else {
-                document.getElementById('fadingStatus').innerHTML = '✅ Schedule running';
+                document.getElementById('fadingStatus').innerHTML = '✅ Schedule running smoothly';
                 document.getElementById('fadingStatus').style.background = '#d4edda';
                 document.getElementById('fadingStatus').style.color = '#155724';
             }
             
             if (data.overheat) {
                 document.getElementById('warning').classList.add('show');
-                document.getElementById('warningMsg').innerHTML = `🔥 OVERHEAT! Temp > ${data.maxTemperature}°C | Upper: ${data.temperature1?.toFixed(1)}°C Lower: ${data.temperature2?.toFixed(1)}°C - LEDs OFF!`;
+                document.getElementById('warningMsg').innerHTML = `🔥 OVERHEAT! Temperature exceeds ${data.maxTemperature}°C | Upper: ${data.temperature1?.toFixed(1)}°C Lower: ${data.temperature2?.toFixed(1)}°C - ALL LEDs OFF!`;
             } else {
                 document.getElementById('warning').classList.remove('show');
             }
@@ -653,7 +667,7 @@
             }
             let fanMode = mode === 1 ? 'manual_on' : (mode === 0 ? 'manual_off' : 'auto');
             client.publish(topicPrefix + '/fan/control', JSON.stringify({ mode: fanMode }));
-            showToast(`Fan: ${fanMode}`, 'info');
+            showToast(`Fan: ${fanMode === 'auto' ? 'Auto Mode' : (fanMode === 'manual_on' ? 'Manual ON' : 'Manual OFF')}`, 'info');
         }
         
         // ==================== SCHEDULE FUNCTIONS ====================
@@ -667,7 +681,7 @@
             scheduleData.sort((a, b) => a.time.localeCompare(b.time));
             renderSchedulePoints();
             updateChart();
-            showToast('Point added', 'success');
+            showToast('Schedule point added', 'success');
         }
         
         function renderSchedulePoints() {
@@ -676,7 +690,7 @@
             container.innerHTML = '';
             
             if (scheduleData.length === 0) {
-                container.innerHTML = '<div style="text-align:center;padding:30px;color:#999;">No schedule points. Click "Add Point"</div>';
+                container.innerHTML = '<div style="text-align:center;padding:30px;color:#999;">No schedule points. Click "Add Schedule Point" to start</div>';
                 return;
             }
             
@@ -689,12 +703,13 @@
                 headerDiv.className = 'schedule-header';
                 headerDiv.innerHTML = `
                     <div class="time-input">
+                        <span style="font-weight:bold; font-size:12px;">🕐 Time:</span>
                         <input type="time" value="${point.time}" onchange="updateScheduleTime(${idx}, this.value)">
                     </div>
-                    <button onclick="removeSchedulePoint(${idx})" class="danger" style="padding:4px 12px;">Remove</button>
+                    <button onclick="removeSchedulePoint(${idx})" class="danger" style="padding:4px 12px;">🗑 Remove</button>
                 `;
                 
-                // Channel inputs in one row (compact)
+                // Channel inputs in one row (compact) with FULL NAMES
                 const channelsDiv = document.createElement('div');
                 channelsDiv.className = 'channel-inputs';
                 
@@ -703,7 +718,7 @@
                     itemDiv.className = 'channel-item';
                     itemDiv.style.borderLeftColor = ch.color;
                     itemDiv.innerHTML = `
-                        <label style="color:${ch.color};">${ch.name}</label>
+                        <label style="color:${ch.color};">💡 ${ch.name}</label>
                         <input type="number" min="0" max="100" step="1" value="${point.levels[chIdx]}" 
                                onchange="updateScheduleLevel(${idx}, ${chIdx}, this.value)">
                     `;
@@ -722,6 +737,7 @@
                 scheduleData.sort((a, b) => a.time.localeCompare(b.time));
                 renderSchedulePoints();
                 updateChart();
+                showToast('Schedule time updated', 'info');
             }
         }
         
@@ -739,9 +755,9 @@
                 scheduleData.splice(index, 1);
                 renderSchedulePoints();
                 updateChart();
-                showToast('Point removed', 'warning');
+                showToast('Schedule point removed', 'warning');
             } else {
-                showToast('Need at least 2 points!', 'error');
+                showToast('Cannot remove! Need at least 2 schedule points', 'error');
             }
         }
         
@@ -751,7 +767,7 @@
             
             const timeLabels = [];
             const datasets = channels.map((ch, idx) => ({
-                label: ch.fullName,
+                label: ch.name,
                 data: [],
                 borderColor: ch.color,
                 backgroundColor: ch.color + '20',
@@ -825,7 +841,7 @@
                 }))
             };
             client.publish(topicPrefix + '/schedule', JSON.stringify(scheduleForESP));
-            showToast('Schedule saved to ESP32!', 'success');
+            showToast('✅ Schedule saved to ESP32!', 'success');
         }
         
         function loadScheduleFromESP() { resetToDefault(); }
@@ -834,20 +850,24 @@
             scheduleData = [];
             const defaultPoints = [
                 { time: '00:00', levels: [0,0,0,0,0,0,0] },
-                { time: '06:00', levels: [30,20,15,40,25,50,60] },
-                { time: '09:00', levels: [70,50,40,85,60,90,100] },
+                { time: '05:00', levels: [5,3,2,10,5,15,20] },
+                { time: '06:30', levels: [30,20,15,40,25,50,60] },
+                { time: '08:00', levels: [60,45,35,75,55,80,85] },
+                { time: '10:00', levels: [85,65,50,90,70,95,100] },
                 { time: '12:00', levels: [100,80,60,100,80,100,100] },
-                { time: '15:00', levels: [80,60,45,90,65,95,100] },
-                { time: '18:00', levels: [50,35,25,70,45,75,90] },
-                { time: '22:00', levels: [10,5,5,20,10,30,50] },
-                { time: '23:59', levels: [0,0,0,0,0,0,0] }
+                { time: '14:00', levels: [90,70,55,95,75,95,100] },
+                { time: '16:00', levels: [70,50,40,85,60,85,90] },
+                { time: '18:00', levels: [40,25,20,60,40,65,75] },
+                { time: '20:00', levels: [15,10,8,30,15,40,50] },
+                { time: '22:00', levels: [5,3,2,10,5,20,25] },
+                { time: '23:30', levels: [0,0,0,0,0,0,0] }
             ];
             defaultPoints.forEach(point => {
                 scheduleData.push({ time: point.time, levels: [...point.levels] });
             });
             renderSchedulePoints();
             updateChart();
-            showToast('Reset to default', 'info');
+            showToast('Reset to default schedule', 'info');
         }
         
         // ==================== MANUAL CONTROL ====================
@@ -860,7 +880,7 @@
                 itemDiv.className = 'manual-item';
                 itemDiv.style.borderLeft = `3px solid ${ch.color}`;
                 itemDiv.innerHTML = `
-                    <label style="color:${ch.color};">${ch.name}</label>
+                    <label style="color:${ch.color};">🎛️ ${ch.name}</label>
                     <input type="number" min="0" max="100" step="1" value="0" id="manual_${idx}"
                            onchange="sendManualControl(${idx}, this.value)">
                 `;
@@ -876,6 +896,7 @@
             const newLevel = parseInt(level);
             if (isNaN(newLevel)) return;
             client.publish(topicPrefix + '/manual', JSON.stringify({ channel: channel, level: newLevel }));
+            showToast(`${channels[channel].name} set to ${newLevel}%`, 'info');
         }
         
         function setAllChannels(value) {
@@ -886,7 +907,7 @@
                     sendManualControl(i, value);
                 }
             }
-            showToast(`All LEDs: ${value}%`, 'info');
+            showToast(`All channels set to ${value}%`, 'success');
         }
         
         function setMaxTemperature() {
@@ -896,52 +917,19 @@
             }
             const maxTemp = parseFloat(document.getElementById('maxTemp').value);
             if (isNaN(maxTemp) || maxTemp < 20 || maxTemp > 50) {
-                showToast('Temp must be 20-50°C', 'error');
+                showToast('Temperature must be between 20-50°C', 'error');
                 return;
             }
             client.publish(topicPrefix + '/maxTemp', JSON.stringify({ maxTemp: maxTemp }));
-            showToast(`Max temp: ${maxTemp}°C`, 'success');
+            showToast(`✅ Max temperature set to ${maxTemp}°C`, 'success');
         }
         
+        // ==================== TOAST NOTIFICATION ====================
         function showToast(message, type) {
             const toast = document.createElement('div');
             toast.style.cssText = `
-                position:fixed; bottom:20px; right:20px; padding:8px 16px; border-radius:8px;
-                color:white; z-index:10000; animation:slideIn 0.3s ease; font-size:12px;
+                position: fixed; bottom: 20px; right: 20px; padding: 10px 20px; border-radius: 8px;
+                color: white; z-index: 10000; animation: slideIn 0.3s ease; font-size: 13px;
                 background: ${type === 'success' ? '#27ae60' : (type === 'error' ? '#e74c3c' : (type === 'warning' ? '#f39c12' : '#3498db'))};
+                box-shadow: 0 3px 10px rgba(0,0,0,0.2);
             `;
-            toast.textContent = message;
-            document.body.appendChild(toast);
-            setTimeout(() => {
-                toast.style.animation = 'slideOut 0.3s ease';
-                setTimeout(() => toast.remove(), 300);
-            }, 2000);
-        }
-        
-        function initChart() {
-            const ctx = document.getElementById('scheduleChart').getContext('2d');
-            chart = new Chart(ctx, {
-                type: 'line',
-                data: { labels: [], datasets: [] },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: true,
-                    scales: {
-                        y: { beginAtZero: true, max: 100, title: { display: true, text: 'Intensity (%)', font: { size: 12 } } },
-                        x: { title: { display: true, text: 'Time', font: { size: 12 } }, ticks: { maxRotation: 45, minRotation: 45, stepSize: 2 } }
-                    },
-                    plugins: { legend: { position: 'bottom', labels: { font: { size: 10 } } } }
-                }
-            });
-        }
-        
-        // ==================== INIT ====================
-        document.addEventListener('DOMContentLoaded', function() {
-            initChart();
-            renderManualControls();
-            initMQTT();
-            resetToDefault();
-        });
-    </script>
-</body>
-</html>
