@@ -1,649 +1,372 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Aquarium LED Controller</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/mqtt/4.3.7/mqtt.min.js"></script>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+#include <WiFi.h>
+#include <PubSubClient.h>
+#include <ArduinoJson.h>
+#include <Preferences.h>
+#include <time.h>
+#include <NTPClient.h>
+#include <WiFiUdp.h>
 
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            padding: 20px;
-        }
+// Pin Definitions
+#define NTC1_PIN 34
+#define NTC2_PIN 35
 
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-            background: white;
-            border-radius: 20px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-            overflow: hidden;
-        }
+// LED Channels
+const int ledPins[] = {5, 18, 19, 21, 22, 23, 25};
+const char* ledLabels[] = {"Royal Blue", "Blue", "Violet", "Red", "Green", "White", "Sump"};
+const int ledCount = 7;
 
-        .header {
-            background: #2c3e50;
-            color: white;
-            padding: 20px;
-            text-align: center;
-        }
+// Fan Pin
+#define FAN_PIN 26
 
-        .header h1 {
-            font-size: 24px;
-        }
+// WiFi Credentials
+const char* ssid = "www.sexymom.biz";
+const char* password = "Unyilunyil";
 
-        .content {
-            padding: 20px;
-        }
+// MQTT Broker
+const char* mqtt_server = "broker.emqx.io";
+const int mqtt_port = 1883;
+const char* mqtt_topic_prefix = "aquarium/controller";
 
-        .status-panel {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 20px;
-            margin-bottom: 30px;
-        }
+// NTP Server
+const char* ntpServer = "pool.ntp.org";
+const long gmtOffset_sec = 7 * 3600;
+const int daylightOffset_sec = 0;
 
-        .status-card {
-            background: #f8f9fa;
-            border-radius: 10px;
-            padding: 15px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-        }
+// Preferences Storage
+Preferences prefs;
 
-        .status-card h3 {
-            margin-bottom: 15px;
-            color: #2c3e50;
-        }
+// Objects
+WiFiClient espClient;
+PubSubClient client(espClient);
+WiFiUDP ntpUDP;
+NTPClient timeClient(ntpUDP, ntpServer, gmtOffset_sec, 60000);
 
-        .temp-display {
-            display: flex;
-            justify-content: space-around;
-            margin-bottom: 20px;
-        }
+// Variables
+float temperature1 = 0;
+float temperature2 = 0;
+float maxTemperature = 35.0;
+bool overheat = false;
+bool fanState = false;
+unsigned long lastTempRead = 0;
+const unsigned long tempReadInterval = 30000;
 
-        .temp-item {
-            text-align: center;
-        }
+// Schedule structure
+struct SchedulePoint {
+  int hour;
+  int minute;
+  float levels[7];
+};
 
-        .temp-value {
-            font-size: 32px;
-            font-weight: bold;
-            color: #e74c3c;
-        }
+SchedulePoint schedules[24];
+int scheduleCount = 0;
 
-        .temp-label {
-            font-size: 14px;
-            color: #7f8c8d;
-            margin-top: 5px;
-        }
+// Current LED levels
+float currentLevels[7] = {0};
 
-        .max-temp-control {
-            margin-top: 15px;
-        }
+// Function prototypes
+void setup_wifi();
+void callback(char* topic, byte* message, unsigned int length);
+void reconnect();
+void readTemperature();
+void updateLEDs();
+void updateFan();
+void checkOverheat();
+void loadSchedule();
+void saveSchedule();
+void processSchedule(int hour, int minute);
+float interpolate(float start, float end, float ratio);
+void publishStatus();
 
-        .max-temp-control label {
-            display: block;
-            margin-bottom: 5px;
-            font-weight: bold;
-        }
+void setup() {
+  Serial.begin(115200);
+  
+  for (int i = 0; i < ledCount; i++) {
+    pinMode(ledPins[i], OUTPUT);
+    ledcSetup(i, 5000, 8);
+    ledcAttachPin(ledPins[i], i);
+  }
+  pinMode(FAN_PIN, OUTPUT);
+  digitalWrite(FAN_PIN, LOW);
+  
+  prefs.begin("aquarium", false);
+  loadSchedule();
+  maxTemperature = prefs.getFloat("maxTemp", 35.0);
+  
+  setup_wifi();
+  client.setServer(mqtt_server, mqtt_port);
+  client.setCallback(callback);
+  configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
+  
+  while (time(nullptr) < 100000) {
+    delay(100);
+  }
+  Serial.println("\nTime synchronized");
+}
 
-        .max-temp-control input {
-            width: 100%;
-            padding: 8px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            margin-bottom: 10px;
-        }
+void setup_wifi() {
+  delay(10);
+  Serial.println();
+  Serial.print("Connecting to ");
+  Serial.println(ssid);
+  
+  WiFi.begin(ssid, password);
+  
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+  
+  Serial.println("");
+  Serial.println("WiFi connected");
+  Serial.println("IP address: ");
+  Serial.println(WiFi.localIP());
+}
 
-        .max-temp-control button {
-            background: #3498db;
-            color: white;
-            border: none;
-            padding: 8px 15px;
-            border-radius: 5px;
-            cursor: pointer;
+void callback(char* topic, byte* message, unsigned int length) {
+  String messageTemp;
+  for (int i = 0; i < length; i++) {
+    messageTemp += (char)message[i];
+  }
+  
+  Serial.print("Message arrived on topic: ");
+  Serial.print(topic);
+  Serial.print(". Message: ");
+  Serial.println(messageTemp);
+  
+  StaticJsonDocument<2048> doc;
+  DeserializationError error = deserializeJson(doc, messageTemp);
+  
+  if (!error) {
+    if (strcmp(topic, mqtt_topic_prefix "/schedule") == 0) {
+      scheduleCount = doc["count"];
+      for (int i = 0; i < scheduleCount; i++) {
+        schedules[i].hour = doc["schedules"][i]["hour"];
+        schedules[i].minute = doc["schedules"][i]["minute"];
+        for (int j = 0; j < 7; j++) {
+          schedules[i].levels[j] = doc["schedules"][i]["levels"][j];
         }
+      }
+      saveSchedule();
+      Serial.println("Schedule saved");
+    }
+    else if (strcmp(topic, mqtt_topic_prefix "/maxTemp") == 0) {
+      maxTemperature = doc["maxTemp"];
+      prefs.putFloat("maxTemp", maxTemperature);
+      Serial.print("Max temperature set to: ");
+      Serial.println(maxTemperature);
+    }
+    else if (strcmp(topic, mqtt_topic_prefix "/manual") == 0) {
+      int channel = doc["channel"];
+      float level = doc["level"];
+      if (channel >= 0 && channel < ledCount) {
+        currentLevels[channel] = level;
+        ledcWrite(channel, (int)(level * 2.55));
+      }
+    }
+  }
+}
 
-        .warning {
-            background: #ff6b6b;
-            color: white;
-            padding: 10px;
-            border-radius: 5px;
-            margin-top: 10px;
-            display: none;
-        }
+void reconnect() {
+  while (!client.connected()) {
+    Serial.print("Attempting MQTT connection...");
+    String clientId = "ESP32Client-";
+    clientId += String(random(0xffff), HEX);
+    
+    if (client.connect(clientId.c_str())) {
+      Serial.println("connected");
+      client.subscribe(mqtt_topic_prefix "/schedule");
+      client.subscribe(mqtt_topic_prefix "/maxTemp");
+      client.subscribe(mqtt_topic_prefix "/manual");
+    } else {
+      Serial.print("failed, rc=");
+      Serial.print(client.state());
+      Serial.println(" try again in 5 seconds");
+      delay(5000);
+    }
+  }
+}
 
-        .warning.show {
-            display: block;
-        }
+void readTemperature() {
+  int raw1 = analogRead(NTC1_PIN);
+  int raw2 = analogRead(NTC2_PIN);
+  
+  float resistance1 = 10000.0 * (4095.0 / raw1 - 1.0);
+  float resistance2 = 10000.0 * (4095.0 / raw2 - 1.0);
+  
+  temperature1 = (1.0 / (0.001129148 + 0.000234125 * log(resistance1) + 0.0000000876741 * pow(log(resistance1), 3))) - 273.15;
+  temperature2 = (1.0 / (0.001129148 + 0.000234125 * log(resistance2) + 0.0000000876741 * pow(log(resistance2), 3))) - 273.15;
+  
+  Serial.print("Temperature 1: ");
+  Serial.print(temperature1);
+  Serial.print(" °C, Temperature 2: ");
+  Serial.print(temperature2);
+  Serial.println(" °C");
+}
 
-        .schedule-section {
-            background: #f8f9fa;
-            border-radius: 10px;
-            padding: 20px;
-            margin-bottom: 30px;
-        }
+void updateLEDs() {
+  if (!overheat) {
+    for (int i = 0; i < ledCount; i++) {
+      ledcWrite(i, (int)(currentLevels[i] * 2.55));
+    }
+  } else {
+    for (int i = 0; i < ledCount; i++) {
+      ledcWrite(i, 0);
+    }
+  }
+}
 
-        .schedule-section h3 {
-            margin-bottom: 15px;
-            color: #2c3e50;
-        }
+void updateFan() {
+  if (!overheat && (temperature1 > 30.0 || temperature2 > 30.0)) {
+    fanState = true;
+    digitalWrite(FAN_PIN, HIGH);
+  } else if (temperature1 < 28.0 && temperature2 < 28.0) {
+    fanState = false;
+    digitalWrite(FAN_PIN, LOW);
+  }
+}
 
-        .schedule-controls {
-            margin-bottom: 20px;
-        }
+void checkOverheat() {
+  bool previousOverheat = overheat;
+  
+  if (temperature1 > maxTemperature || temperature2 > maxTemperature) {
+    if (!overheat) {
+      overheat = true;
+      Serial.print("OVERHEAT! Temperature exceeds ");
+      Serial.print(maxTemperature);
+      Serial.print("°C. Temp1: ");
+      Serial.print(temperature1);
+      Serial.print(", Temp2: ");
+      Serial.println(temperature2);
+      updateLEDs();
+    }
+  } else {
+    if (overheat) {
+      overheat = false;
+      Serial.println("Temperature normal, resuming schedule");
+      time_t now = time(nullptr);
+      struct tm* timeinfo = localtime(&now);
+      processSchedule(timeinfo->tm_hour, timeinfo->tm_min);
+    }
+  }
+}
 
-        .schedule-point {
-            background: white;
-            border-radius: 10px;
-            padding: 15px;
-            margin-bottom: 15px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-        }
+float interpolate(float start, float end, float ratio) {
+  return start + (end - start) * ratio;
+}
 
-        .schedule-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 15px;
-        }
+void processSchedule(int hour, int minute) {
+  if (scheduleCount == 0) return;
+  
+  int currentIndex = -1;
+  int nextIndex = -1;
+  int currentMinutes = hour * 60 + minute;
+  
+  for (int i = 0; i < scheduleCount; i++) {
+    int scheduleMinutes = schedules[i].hour * 60 + schedules[i].minute;
+    if (scheduleMinutes <= currentMinutes) {
+      currentIndex = i;
+    } else if (nextIndex == -1 && scheduleMinutes > currentMinutes) {
+      nextIndex = i;
+    }
+  }
+  
+  if (currentIndex == -1 && scheduleCount > 0) {
+    currentIndex = scheduleCount - 1;
+  }
+  if (nextIndex == -1 && scheduleCount > 0) {
+    nextIndex = 0;
+  }
+  
+  if (currentIndex != -1 && nextIndex != -1) {
+    int currentScheduleMinutes = schedules[currentIndex].hour * 60 + schedules[currentIndex].minute;
+    int nextScheduleMinutes = schedules[nextIndex].hour * 60 + schedules[nextIndex].minute;
+    
+    if (nextScheduleMinutes < currentScheduleMinutes) {
+      nextScheduleMinutes += 24 * 60;
+    }
+    
+    float ratio = 0;
+    if (nextScheduleMinutes > currentScheduleMinutes) {
+      ratio = (float)(currentMinutes - currentScheduleMinutes) / (nextScheduleMinutes - currentScheduleMinutes);
+      ratio = constrain(ratio, 0, 1);
+    }
+    
+    for (int i = 0; i < 7; i++) {
+      currentLevels[i] = interpolate(schedules[currentIndex].levels[i], 
+                                      schedules[nextIndex].levels[i], 
+                                      ratio);
+    }
+    
+    updateLEDs();
+  }
+}
 
-        .time-input {
-            display: flex;
-            gap: 10px;
-        }
+void saveSchedule() {
+  prefs.putInt("scheduleCount", scheduleCount);
+  for (int i = 0; i < scheduleCount; i++) {
+    char key[20];
+    sprintf(key, "sch_hour_%d", i);
+    prefs.putInt(key, schedules[i].hour);
+    sprintf(key, "sch_min_%d", i);
+    prefs.putInt(key, schedules[i].minute);
+    for (int j = 0; j < 7; j++) {
+      sprintf(key, "sch_lev_%d_%d", i, j);
+      prefs.putFloat(key, schedules[i].levels[j]);
+    }
+  }
+}
 
-        .time-input input {
-            padding: 5px;
-            border: 1px solid #ddd;
-            border-radius: 3px;
-        }
+void loadSchedule() {
+  scheduleCount = prefs.getInt("scheduleCount", 0);
+  for (int i = 0; i < scheduleCount; i++) {
+    char key[20];
+    sprintf(key, "sch_hour_%d", i);
+    schedules[i].hour = prefs.getInt(key, 0);
+    sprintf(key, "sch_min_%d", i);
+    schedules[i].minute = prefs.getInt(key, 0);
+    for (int j = 0; j < 7; j++) {
+      sprintf(key, "sch_lev_%d_%d", i, j);
+      schedules[i].levels[j] = prefs.getFloat(key, 0);
+    }
+  }
+}
 
-        .channel-sliders {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 10px;
-        }
+void publishStatus() {
+  StaticJsonDocument<2048> doc;
+  
+  doc["temperature1"] = temperature1;
+  doc["temperature2"] = temperature2;
+  doc["maxTemperature"] = maxTemperature;
+  doc["overheat"] = overheat;
+  doc["fanState"] = fanState;
+  
+  JsonArray levels = doc.createNestedArray("levels");
+  for (int i = 0; i < 7; i++) {
+    levels.add(currentLevels[i]);
+  }
+  
+  char buffer[2048];
+  serializeJson(doc, buffer);
+  client.publish(mqtt_topic_prefix "/status", buffer);
+}
 
-        .channel-item {
-            background: #f8f9fa;
-            padding: 10px;
-            border-radius: 5px;
-        }
-
-        .channel-item label {
-            display: block;
-            margin-bottom: 5px;
-            font-size: 12px;
-            font-weight: bold;
-        }
-
-        .channel-item input {
-            width: 100%;
-        }
-
-        .channel-value {
-            font-size: 12px;
-            text-align: center;
-            margin-top: 5px;
-        }
-
-        .button-group {
-            display: flex;
-            gap: 10px;
-            margin-top: 20px;
-        }
-
-        button {
-            background: #2c3e50;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 5px;
-            cursor: pointer;
-            transition: background 0.3s;
-        }
-
-        button:hover {
-            background: #34495e;
-        }
-
-        button.danger {
-            background: #e74c3c;
-        }
-
-        button.success {
-            background: #27ae60;
-        }
-
-        .chart-container {
-            background: #f8f9fa;
-            border-radius: 10px;
-            padding: 20px;
-            margin-top: 30px;
-        }
-
-        .manual-control {
-            margin-top: 20px;
-            padding: 15px;
-            background: #f8f9fa;
-            border-radius: 10px;
-        }
-
-        .live-view {
-            background: #ecf0f1;
-            padding: 10px;
-            border-radius: 5px;
-            text-align: center;
-            margin-bottom: 20px;
-        }
-
-        @media (max-width: 768px) {
-            .channel-sliders {
-                grid-template-columns: 1fr;
-            }
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h1>🌊 Aquarium LED Controller</h1>
-            <p>Smart Lighting Management System</p>
-        </div>
-
-        <div class="content">
-            <div class="status-panel">
-                <div class="status-card">
-                    <h3>🌡️ Temperature Status</h3>
-                    <div class="temp-display">
-                        <div class="temp-item">
-                            <div class="temp-value" id="temp1">--.-</div>
-                            <div class="temp-label">Upper Temperature</div>
-                        </div>
-                        <div class="temp-item">
-                            <div class="temp-value" id="temp2">--.-</div>
-                            <div class="temp-label">Lower Temperature</div>
-                        </div>
-                    </div>
-                    <div class="max-temp-control">
-                        <label>Maximum Temperature Limit (°C)</label>
-                        <input type="number" id="maxTemp" step="0.5" value="35.0">
-                        <button onclick="setMaxTemperature()">Set Limit</button>
-                    </div>
-                    <div class="warning" id="warning">
-                        ⚠️ <span id="warningMsg"></span>
-                    </div>
-                </div>
-
-                <div class="status-card">
-                    <h3>💨 Fan Status</h3>
-                    <div class="live-view" id="fanStatus">Fan: OFF</div>
-                    <h3>💡 Current LED Levels</h3>
-                    <div id="currentLevels"></div>
-                </div>
-            </div>
-
-            <div class="schedule-section">
-                <h3>📊 Lighting Schedule</h3>
-                <div id="schedulePoints"></div>
-                <div class="button-group">
-                    <button onclick="addSchedulePoint()" class="success">+ Add Schedule Point</button>
-                    <button onclick="saveSchedule()">💾 Save Schedule</button>
-                    <button onclick="loadScheduleFromESP()">📥 Load from ESP</button>
-                </div>
-            </div>
-
-            <div class="chart-container">
-                <h3>📈 Lighting Schedule Graph</h3>
-                <canvas id="scheduleChart"></canvas>
-            </div>
-
-            <div class="manual-control">
-                <h3>🎮 Manual Control</h3>
-                <div id="manualChannels"></div>
-            </div>
-        </div>
-    </div>
-
-    <script>
-        // MQTT Configuration
-        const mqttBroker = 'wss://broker.emqx.io:8084/mqtt';
-        const topicPrefix = 'aquarium/controller';
-        
-        let client = null;
-        let scheduleData = [];
-        let chart = null;
-        
-        // Channel configurations
-        const channels = [
-            'Royal Blue', 'Blue', 'Violet', 'Red', 'Green', 'White', 'Sump'
-        ];
-        
-        // Initialize MQTT
-        function initMQTT() {
-            client = mqtt.connect(mqttBroker);
-            
-            client.on('connect', () => {
-                console.log('Connected to MQTT broker');
-                client.subscribe(topicPrefix + '/status');
-                loadScheduleFromESP();
-            });
-            
-            client.on('message', (topic, message) => {
-                if (topic === topicPrefix + '/status') {
-                    const data = JSON.parse(message.toString());
-                    updateUI(data);
-                }
-            });
-            
-            client.on('error', (err) => {
-                console.error('MQTT error:', err);
-            });
-        }
-        
-        // Update UI with status data
-        function updateUI(data) {
-            document.getElementById('temp1').textContent = data.temperature1.toFixed(1);
-            document.getElementById('temp2').textContent = data.temperature2.toFixed(1);
-            document.getElementById('maxTemp').value = data.maxTemperature;
-            
-            const fanStatus = data.fanState ? 'ON 🔥' : 'OFF ❄️';
-            document.getElementById('fanStatus').innerHTML = `Fan: ${fanStatus}`;
-            
-            if (data.overheat) {
-                const warning = document.getElementById('warning');
-                warning.classList.add('show');
-                document.getElementById('warningMsg').innerHTML = 
-                    `LAMPU PANAS! Suhu melebihi batas (${data.maxTemperature}°C). 
-                     Suhu Atas: ${data.temperature1.toFixed(1)}°C, 
-                     Suhu Bawah: ${data.temperature2.toFixed(1)}°C`;
-            } else {
-                document.getElementById('warning').classList.remove('show');
-            }
-            
-            // Update current levels display
-            const levelsHtml = channels.map((ch, idx) => 
-                `<div>${ch}: ${data.levels[idx].toFixed(1)}%</div>`
-            ).join('');
-            document.getElementById('currentLevels').innerHTML = levelsHtml;
-        }
-        
-        // Add schedule point
-        function addSchedulePoint(time = '12:00', levels = null) {
-            const defaultLevels = levels || channels.map(() => 0);
-            scheduleData.push({
-                time: time,
-                levels: defaultLevels
-            });
-            scheduleData.sort((a, b) => a.time.localeCompare(b.time));
-            renderSchedulePoints();
-            updateChart();
-        }
-        
-        // Render schedule points UI
-        function renderSchedulePoints() {
-            const container = document.getElementById('schedulePoints');
-            container.innerHTML = '';
-            
-            scheduleData.forEach((point, idx) => {
-                const pointDiv = document.createElement('div');
-                pointDiv.className = 'schedule-point';
-                pointDiv.innerHTML = `
-                    <div class="schedule-header">
-                        <div class="time-input">
-                            <input type="time" value="${point.time}" onchange="updateScheduleTime(${idx}, this.value)">
-                        </div>
-                        <button onclick="removeSchedulePoint(${idx})" class="danger">Remove</button>
-                    </div>
-                    <div class="channel-sliders">
-                        ${channels.map((ch, chIdx) => `
-                            <div class="channel-item">
-                                <label>${ch}</label>
-                                <input type="range" min="0" max="100" value="${point.levels[chIdx]}" 
-                                       onchange="updateScheduleLevel(${idx}, ${chIdx}, this.value)">
-                                <div class="channel-value">${point.levels[chIdx]}%</div>
-                            </div>
-                        `).join('')}
-                    </div>
-                `;
-                container.appendChild(pointDiv);
-            });
-        }
-        
-        // Update schedule time
-        function updateScheduleTime(index, time) {
-            scheduleData[index].time = time;
-            scheduleData.sort((a, b) => a.time.localeCompare(b.time));
-            renderSchedulePoints();
-            updateChart();
-        }
-        
-        // Update schedule level
-        function updateScheduleLevel(pointIdx, channelIdx, value) {
-            scheduleData[pointIdx].levels[channelIdx] = parseInt(value);
-            renderSchedulePoints();
-            updateChart();
-        }
-        
-        // Remove schedule point
-        function removeSchedulePoint(index) {
-            scheduleData.splice(index, 1);
-            renderSchedulePoints();
-            updateChart();
-        }
-        
-        // Update chart
-        function updateChart() {
-            if (!chart) return;
-            
-            const timeLabels = [];
-            const datasets = channels.map((ch, idx) => ({
-                label: ch,
-                data: [],
-                borderColor: `hsl(${idx * 45}, 70%, 50%)`,
-                backgroundColor: `hsla(${idx * 45}, 70%, 50%, 0.1)`,
-                tension: 0.4,
-                fill: true
-            }));
-            
-            // Generate 24-hour data points
-            for (let hour = 0; hour < 24; hour++) {
-                for (let minute = 0; minute < 60; minute += 30) {
-                    const timeStr = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
-                    timeLabels.push(timeStr);
-                    
-                    const levels = getInterpolatedLevels(timeStr);
-                    datasets.forEach((ds, idx) => {
-                        ds.data.push(levels[idx]);
-                    });
-                }
-            }
-            
-            chart.data.labels = timeLabels;
-            chart.data.datasets = datasets;
-            chart.update();
-        }
-        
-        // Get interpolated levels for a specific time
-        function getInterpolatedLevels(time) {
-            if (scheduleData.length === 0) return channels.map(() => 0);
-            
-            const timeMinutes = timeToMinutes(time);
-            let prevPoint = null;
-            let nextPoint = null;
-            
-            for (let i = 0; i < scheduleData.length; i++) {
-                const pointMinutes = timeToMinutes(scheduleData[i].time);
-                if (pointMinutes <= timeMinutes) {
-                    prevPoint = scheduleData[i];
-                } else if (!nextPoint) {
-                    nextPoint = scheduleData[i];
-                }
-            }
-            
-            if (!prevPoint) prevPoint = scheduleData[scheduleData.length - 1];
-            if (!nextPoint) nextPoint = scheduleData[0];
-            
-            let prevMinutes = timeToMinutes(prevPoint.time);
-            let nextMinutes = timeToMinutes(nextPoint.time);
-            
-            if (nextMinutes < prevMinutes) nextMinutes += 1440;
-            let currentMinutes = timeMinutes;
-            if (currentMinutes < prevMinutes) currentMinutes += 1440;
-            
-            const ratio = (currentMinutes - prevMinutes) / (nextMinutes - prevMinutes);
-            
-            return channels.map((_, idx) => {
-                const start = prevPoint.levels[idx];
-                const end = nextPoint.levels[idx];
-                return start + (end - start) * ratio;
-            });
-        }
-        
-        // Convert time string to minutes
-        function timeToMinutes(time) {
-            const [hours, minutes] = time.split(':').map(Number);
-            return hours * 60 + minutes;
-        }
-        
-        // Save schedule to ESP
-        function saveSchedule() {
-            if (!client || !client.connected) {
-                alert('MQTT not connected!');
-                return;
-            }
-            
-            const scheduleForESP = {
-                count: scheduleData.length,
-                schedules: scheduleData.map(point => ({
-                    hour: parseInt(point.time.split(':')[0]),
-                    minute: parseInt(point.time.split(':')[1]),
-                    levels: point.levels
-                }))
-            };
-            
-            client.publish(topicPrefix + '/schedule', JSON.stringify(scheduleForESP));
-            alert('Schedule saved to ESP32!');
-        }
-        
-        // Load schedule from ESP
-        function loadScheduleFromESP() {
-            // This would require ESP to publish its schedule
-            // For now, create default schedule
-            if (scheduleData.length === 0) {
-                addSchedulePoint('06:00', [0, 0, 0, 0, 0, 0, 0]);
-                addSchedulePoint('08:00', [50, 30, 20, 60, 40, 80, 100]);
-                addSchedulePoint('12:00', [80, 60, 40, 100, 70, 100, 100]);
-                addSchedulePoint('18:00', [60, 40, 30, 80, 50, 90, 100]);
-                addSchedulePoint('22:00', [10, 5, 5, 20, 10, 30, 50]);
-                addSchedulePoint('00:00', [0, 0, 0, 0, 0, 0, 0]);
-            }
-        }
-        
-        // Set max temperature
-        function setMaxTemperature() {
-            if (!client || !client.connected) {
-                alert('MQTT not connected!');
-                return;
-            }
-            
-            const maxTemp = parseFloat(document.getElementById('maxTemp').value);
-            client.publish(topicPrefix + '/maxTemp', JSON.stringify({ maxTemp: maxTemp }));
-            alert('Maximum temperature limit updated!');
-        }
-        
-        // Initialize chart
-        function initChart() {
-            const ctx = document.getElementById('scheduleChart').getContext('2d');
-            chart = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: [],
-                    datasets: []
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: true,
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            max: 100,
-                            title: {
-                                display: true,
-                                text: 'Intensity (%)'
-                            }
-                        },
-                        x: {
-                            title: {
-                                display: true,
-                                text: 'Time'
-                            },
-                            ticks: {
-                                maxRotation: 45,
-                                minRotation: 45
-                            }
-                        }
-                    },
-                    plugins: {
-                        legend: {
-                            position: 'bottom'
-                        }
-                    }
-                }
-            });
-        }
-        
-        // Render manual controls
-        function renderManualControls() {
-            const container = document.getElementById('manualChannels');
-            container.innerHTML = channels.map((ch, idx) => `
-                <div style="margin-bottom: 10px;">
-                    <label>${ch}</label>
-                    <input type="range" min="0" max="100" value="0" id="manual_${idx}" 
-                           onchange="sendManualControl(${idx}, this.value)">
-                    <span id="manual_val_${idx}">0%</span>
-                </div>
-            `).join('');
-        }
-        
-        // Send manual control
-        function sendManualControl(channel, level) {
-            if (!client || !client.connected) {
-                alert('MQTT not connected!');
-                return;
-            }
-            
-            document.getElementById(`manual_val_${channel}`).textContent = `${level}%`;
-            client.publish(topicPrefix + '/manual', JSON.stringify({
-                channel: channel,
-                level: parseInt(level)
-            }));
-        }
-        
-        // Initialize everything
-        window.onload = () => {
-            initChart();
-            renderManualControls();
-            initMQTT();
-            
-            // Update manual control displays
-            setInterval(() => {
-                channels.forEach((_, idx) => {
-                    const slider = document.getElementById(`manual_${idx}`);
-                    if (slider) {
-                        document.getElementById(`manual_val_${idx}`).textContent = `${slider.value}%`;
-                    }
-                });
-            }, 100);
-        };
-    </script>
-</body>
-</html>
+void loop() {
+  if (!client.connected()) {
+    reconnect();
+  }
+  client.loop();
+  
+  if (millis() - lastTempRead >= tempReadInterval) {
+    lastTempRead = millis();
+    readTemperature();
+    checkOverheat();
+    updateFan();
+    publishStatus();
+  }
+  
+  time_t now = time(nullptr);
+  struct tm* timeinfo = localtime(&now);
+  processSchedule(timeinfo->tm_hour, timeinfo->tm_min);
+  
+  delay(100);
+}
