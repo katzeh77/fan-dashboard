@@ -971,3 +971,39 @@
                 background: ${type === 'success' ? '#27ae60' : (type === 'error' ? '#e74c3c' : (type === 'warning' ? '#f39c12' : '#3498db'))};
                 box-shadow: 0 3px 10px rgba(0,0,0,0.2);
             `;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            setTimeout(() => {
+                toast.style.animation = 'slideOut 0.3s ease';
+                setTimeout(() => toast.remove(), 300);
+            }, 2000);
+        }
+        
+        function initChart() {
+            const ctx = document.getElementById('scheduleChart').getContext('2d');
+            chart = new Chart(ctx, {
+                type: 'line',
+                data: { labels: [], datasets: [] },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    scales: {
+                        y: { beginAtZero: true, max: 100, title: { display: true, text: 'Intensity (%)', font: { size: 12 } } },
+                        x: { title: { display: true, text: 'Time (Hours)', font: { size: 12 } }, ticks: { maxRotation: 45, minRotation: 45, stepSize: 2 } }
+                    },
+                    plugins: { legend: { position: 'bottom', labels: { font: { size: 10 } } } }
+                }
+            });
+        }
+        
+        // ==================== INITIALIZATION ====================
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Page loaded, initializing...');
+            initChart();
+            renderManualControls();
+            initMQTT();
+            resetToDefault();
+        });
+    </script>
+</body>
+</html>
