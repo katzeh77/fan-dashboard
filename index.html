@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <title>Smart LED Scheduler - 7 Channel Multi Point</title>
+    <title>Smart LED Scheduler - 7 Channel Multi Point (24 Jam)</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mqtt/4.3.7/mqtt.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
@@ -41,7 +41,9 @@
         .schedule-table { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 13px; }
         .schedule-table th, .schedule-table td { padding: 8px 5px; text-align: center; border-bottom: 1px solid #2d3a5e; }
         .schedule-table input { width: 70px; text-align: center; padding: 6px; margin: 0; }
-        .schedule-table .time-input { width: 85px; }
+        .schedule-table select { width: 85px; padding: 6px; margin: 0; }
+        .time-select { display: flex; gap: 5px; justify-content: center; }
+        .time-select select { width: 60px; }
         .channel-dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; margin-right: 5px; }
         .btn-group { display: flex; gap: 10px; margin-top: 15px; flex-wrap: wrap; }
         .fan-slider { display: flex; gap: 15px; align-items: center; }
@@ -55,16 +57,18 @@
             .grid-2 { grid-template-columns: 1fr; } 
             .schedule-table { font-size: 11px; } 
             .schedule-table input { width: 50px; }
-            .schedule-table .time-input { width: 70px; }
+            .time-select select { width: 50px; }
         }
         .scrollable { overflow-x: auto; }
         .footer-note { text-align: center; margin-top: 20px; font-size: 12px; color: #5a6e8a; }
+        .hour-minute-picker { display: flex; gap: 8px; align-items: center; }
+        .hour-minute-picker select { width: 70px; }
     </style>
 </head>
 <body>
 <div class="container">
     <h1>🎛️ Smart LED Scheduler</h1>
-    <div class="sub">Multi-Point Schedule | User Tetapkan Level di Jam Berapa Saja | Interpolasi Linear</div>
+    <div class="sub">Multi-Point Schedule | Format 24 Jam | Interpolasi Linear</div>
     
     <div class="status-bar">
         <div class="badge" id="clockDisplay">
@@ -103,9 +107,22 @@
             </div>
             
             <div class="card">
-                <h3>➕ Tambah Titik Jadwal Baru</h3>
-                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                    <input type="time" id="newTime" value="12:00" style="width: 130px;">
+                <h3>➕ Tambah Titik Jadwal Baru (24 Jam)</h3>
+                <div class="hour-minute-picker">
+                    <select id="newHour">
+                        <option value="0">00</option><option value="1">01</option><option value="2">02</option>
+                        <option value="3">03</option><option value="4">04</option><option value="5">05</option>
+                        <option value="6">06</option><option value="7">07</option><option value="8">08</option>
+                        <option value="9">09</option><option value="10">10</option><option value="11">11</option>
+                        <option value="12">12</option><option value="13">13</option><option value="14">14</option>
+                        <option value="15">15</option><option value="16">16</option><option value="17">17</option>
+                        <option value="18" selected>18</option><option value="19">19</option><option value="20">20</option>
+                        <option value="21">21</option><option value="22">22</option><option value="23">23</option>
+                    </select>
+                    <span>:</span>
+                    <select id="newMinute">
+                        <option value="0">00</option><option value="15">15</option><option value="30">30</option><option value="45">45</option>
+                    </select>
                     <button id="addScheduleBtn" class="success">+ Tambah Jadwal</button>
                 </div>
                 <p style="font-size:12px; margin-top:10px; color:#8e9baf;">💡 Tips: Klik tambah, lalu isi level channel di tabel. ESP32 akan interpolasi linear antar titik.</p>
@@ -119,12 +136,12 @@
         
         <!-- Kanan: Tabel Jadwal -->
         <div class="card">
-            <h3>📅 Daftar Jadwal (User Tetapkan)</h3>
+            <h3>📅 Daftar Jadwal (User Tetapkan - 24 Jam)</h3>
             <div class="scrollable">
                 <table class="schedule-table" id="scheduleTable">
                     <thead>
                         <tr>
-                            <th>Jam</th>
+                            <th>Jam (24h)</th>
                             <th colspan="7">Level per Channel (%)</th>
                             <th>Aksi</th>
                         </tr>
@@ -147,7 +164,7 @@
         <canvas id="lightChart"></canvas>
     </div>
     <div class="footer-note">
-        ⚡ Data dikirim via MQTT | Semua pengaturan disimpan di EEPROM ESP32 | Interpolasi linear antar titik jadwal
+        ⚡ Semua pengaturan disimpan di EEPROM ESP32 | Format waktu 24 Jam | Interpolasi linear antar titik jadwal
     </div>
 </div>
 
@@ -173,20 +190,31 @@
     let chart;
     let lastEspTime = null;
     
-    // ========== FALLBACK CLOCK LOKAL ==========
-    function updateLocalClock() {
+    // ========== FUNGSI FORMAT JAM 24 JAM ==========
+    function formatHourMinute(hour, minute) {
+        return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+    }
+    
+    function getCurrent24HourTime() {
         const now = new Date();
-        const timeStr = now.toLocaleTimeString('id-ID', { hour12: false });
+        const hours = now.getHours().toString().padStart(2, '0');
+        const minutes = now.getMinutes().toString().padStart(2, '0');
+        const seconds = now.getSeconds().toString().padStart(2, '0');
+        return `${hours}:${minutes}:${seconds}`;
+    }
+    
+    // ========== UPDATE CLOCK DISPLAY (24 JAM) ==========
+    function updateLocalClock() {
         const espTimeElem = document.getElementById('espTime');
         const timeSourceElem = document.getElementById('timeSource');
         
         if (!lastEspTime || lastEspTime === "--:--:--") {
-            espTimeElem.innerHTML = timeStr;
-            timeSourceElem.innerHTML = "(jam lokal)";
+            espTimeElem.innerHTML = getCurrent24HourTime();
+            timeSourceElem.innerHTML = "(jam lokal 24h)";
             timeSourceElem.style.color = "#f59e0b";
         } else {
             espTimeElem.innerHTML = lastEspTime;
-            timeSourceElem.innerHTML = "(dari ESP)";
+            timeSourceElem.innerHTML = "(dari ESP 24h)";
             timeSourceElem.style.color = "#10b981";
         }
     }
@@ -214,8 +242,21 @@
         
         schedules.forEach((sched, idx) => {
             const row = tbody.insertRow();
-            // Kolom jam
-            row.insertCell(0).innerHTML = `<input type="time" class="time-input" value="${String(sched.hour).padStart(2, '0')}:${String(sched.minute).padStart(2, '0')}" data-idx="${idx}">`;
+            // Kolom jam dengan select dropdown (24 jam)
+            row.insertCell(0).innerHTML = `
+                <div class="time-select">
+                    <select class="hour-select" data-idx="${idx}">
+                        ${Array.from({length: 24}, (_, i) => `<option value="${i}" ${sched.hour === i ? 'selected' : ''}>${String(i).padStart(2,'0')}</option>`).join('')}
+                    </select>
+                    <span>:</span>
+                    <select class="minute-select" data-idx="${idx}">
+                        <option value="0" ${sched.minute === 0 ? 'selected' : ''}>00</option>
+                        <option value="15" ${sched.minute === 15 ? 'selected' : ''}>15</option>
+                        <option value="30" ${sched.minute === 30 ? 'selected' : ''}>30</option>
+                        <option value="45" ${sched.minute === 45 ? 'selected' : ''}>45</option>
+                    </select>
+                </div>
+            `;
             
             // Kolom level per channel
             for (let ch = 0; ch < 7; ch++) {
@@ -227,10 +268,14 @@
             row.insertCell().innerHTML = `<button class="danger" onclick="deleteSchedule(${idx})" style="padding:6px 12px;">🗑️ Hapus</button>`;
         });
         
-        // Event listeners
-        document.querySelectorAll('.time-input').forEach(inp => {
-            inp.removeEventListener('change', handleTimeChange);
-            inp.addEventListener('change', handleTimeChange);
+        // Event listeners untuk select jam
+        document.querySelectorAll('.hour-select').forEach(sel => {
+            sel.removeEventListener('change', handleHourChange);
+            sel.addEventListener('change', handleHourChange);
+        });
+        document.querySelectorAll('.minute-select').forEach(sel => {
+            sel.removeEventListener('change', handleMinuteChange);
+            sel.addEventListener('change', handleMinuteChange);
         });
         document.querySelectorAll('.level-input').forEach(inp => {
             inp.removeEventListener('change', handleLevelChange);
@@ -238,13 +283,23 @@
         });
     }
     
-    function handleTimeChange(e) {
+    function handleHourChange(e) {
         const idx = parseInt(e.target.dataset.idx);
-        const val = e.target.value.split(':');
+        const newHour = parseInt(e.target.value);
         if (schedules[idx]) {
-            schedules[idx].hour = parseInt(val[0]);
-            schedules[idx].minute = parseInt(val[1]);
+            schedules[idx].hour = newHour;
             sendScheduleToESP();
+            renderScheduleTable(); // Re-render untuk update tampilan
+        }
+    }
+    
+    function handleMinuteChange(e) {
+        const idx = parseInt(e.target.dataset.idx);
+        const newMinute = parseInt(e.target.value);
+        if (schedules[idx]) {
+            schedules[idx].minute = newMinute;
+            sendScheduleToESP();
+            renderScheduleTable();
         }
     }
     
@@ -268,12 +323,8 @@
     }
     
     function addNewSchedule() {
-        const timeVal = document.getElementById('newTime').value;
-        if (!timeVal) {
-            alert("Pilih jam terlebih dahulu!");
-            return;
-        }
-        const [hour, minute] = timeVal.split(':').map(Number);
+        const hour = parseInt(document.getElementById('newHour').value);
+        const minute = parseInt(document.getElementById('newMinute').value);
         
         const exists = schedules.some(s => s.hour === hour && s.minute === minute);
         if (exists) {
@@ -302,7 +353,7 @@
             levels: s.levels
         }));
         client.publish(topics.schedule, JSON.stringify(payload));
-        console.log("Schedule sent", payload);
+        console.log("Schedule sent (24h format)", payload);
     }
     
     function saveToEEPROM() {
@@ -322,13 +373,12 @@
         // Update waktu dari ESP
         if (data.time) {
             lastEspTime = data.time;
-            document.getElementById('espTime').innerHTML = data.time;
             const timeSourceElem = document.getElementById('timeSource');
             if (data.time_valid === false) {
                 timeSourceElem.innerHTML = "(ESP: waktu belum sync)";
                 timeSourceElem.style.color = "#f59e0b";
             } else {
-                timeSourceElem.innerHTML = "(dari ESP)";
+                timeSourceElem.innerHTML = "(dari ESP 24h)";
                 timeSourceElem.style.color = "#10b981";
             }
         }
