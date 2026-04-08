@@ -50,13 +50,25 @@ input{
   padding:5px;
   font-size:14px;
 }
+
+/* ===== JAM ===== */
+#clock{
+  text-align:center;
+  font-size:26px;
+  font-weight:bold;
+  margin:10px 0;
+  color:#00e5ff;
+}
 </style>
 </head>
 
 <body>
 
-<div class="header"> Reef Tank Controller</div>
+<div class="header">A8 Controller</div>
 <div id="status">🔌 Connecting...</div>
+
+<!-- JAM -->
+<div id="clock">00:00:00</div>
 
 <div class="card">
 <button onclick="setMode(1)">AUTO</button>
@@ -71,7 +83,7 @@ const client = mqtt.connect('wss://broker.emqx.io:8084/mqtt');
 const container = document.getElementById('channels');
 const statusEl = document.getElementById('status');
 
-// ===== LABEL CHANNEL BARU =====
+// ===== LABEL CHANNEL =====
 const labels = [
   "Royal Blue",
   "Blue",
@@ -87,7 +99,7 @@ const labels = [
 for(let i=1;i<=8;i++){
   container.innerHTML += `
   <div class="card">
-    <h3>${i} - ${labels[i-1]}</h3>
+    <h3>CH${i} - ${labels[i-1]}</h3>
 
     ON <input type="time" id="on${i}">
     PEAK <input type="time" id="peak${i}">
@@ -102,20 +114,18 @@ for(let i=1;i<=8;i++){
 client.on('connect',()=>{
   statusEl.innerHTML="✅ Connected MQTT";
   statusEl.style.color="#0f0";
-  console.log("MQTT CONNECTED");
 });
 
 client.on('error',(err)=>{
   statusEl.innerHTML="❌ MQTT Error";
   statusEl.style.color="#f00";
-  console.log(err);
 });
 
-// ===== MODE =====
+// ===== MODE (SUDAH FIX ESP32) =====
 function setMode(v){
-  console.log("MODE:",v);
-  alert("Mode dikirim: "+(v==1?"AUTO":"MANUAL"));
-  client.publish('mode/auto',v.toString());
+  let mode = v==1 ? "auto" : "manual";
+  alert("Mode: "+mode);
+  client.publish('mode', mode);
 }
 
 // ===== TIME CONVERT =====
@@ -138,14 +148,28 @@ function setSch(i){
 
     let data = `${on},${peak},${off},${max}`;
 
-    console.log("SEND:",i,data);
     alert("Schedule dikirim CH"+i);
-
     client.publish(`set/schedule/${i}`,data);
-  }catch(e){
-    console.log("ERROR INPUT",e);
-  }
+
+  }catch(e){}
 }
+
+// ===== JAM REALTIME WIB =====
+function updateClock(){
+  let now = new Date();
+
+  // paksa WIB (UTC+7)
+  let utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+  let wib = new Date(utc + (7 * 3600000));
+
+  let h = String(wib.getHours()).padStart(2,'0');
+  let m = String(wib.getMinutes()).padStart(2,'0');
+  let s = String(wib.getSeconds()).padStart(2,'0');
+
+  document.getElementById("clock").innerHTML = `${h}:${m}:${s}`;
+}
+
+setInterval(updateClock,1000);
 </script>
 
 </body>
