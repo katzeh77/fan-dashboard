@@ -1,102 +1,121 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+<meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>A8 Controller</title>
+<title>Aquarium A8 Controller</title>
+
 <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+
 <style>
 body{
   margin:0;
-  font-family:sans-serif;
-  background:#0b1c2c;
-  color:#fff;
-  padding:10px;
+  font-family:Arial;
+  background:#0b1a2a;
+  color:white;
+  text-align:center;
 }
+
+h1{
+  margin:20px;
+}
+
+.container{
+  max-width:400px;
+  margin:auto;
+}
+
 .card{
-  background:#132f4c;
+  background:#132c44;
+  margin:10px;
   padding:15px;
-  border-radius:15px;
-  margin-bottom:10px;
+  border-radius:12px;
 }
-h2{margin:5px 0}
-.slider{width:100%}
-input{width:60px}
+
+.slider{
+  width:100%;
+}
+
 button{
+  margin:5px;
   padding:10px;
   border:none;
-  border-radius:10px;
-  background:#00aaff;
-  color:#fff;
+  border-radius:8px;
+  background:#1e90ff;
+  color:white;
+  font-size:14px;
+}
+
+button:hover{
+  background:#3aa0ff;
 }
 </style>
 </head>
+
 <body>
 
-<div class="card">
-<h2 id="clock">--:--</h2>
-Status: <span id="status">-</span>
-</div>
+<h1>LED A8 Controller</h1>
+
+<div class="container">
 
 <div class="card">
-<h3>Suhu</h3>
-Atas: <span id="t1">--</span> °C<br>
-Bawah: <span id="t2">--</span> °C
+  <button onclick="setMode('auto')">AUTO</button>
+  <button onclick="setMode('manual')">MANUAL</button>
 </div>
 
-<div class="card">
-<h3>Batas Suhu</h3>
-<input id="batas" type="number" value="50">
-<button onclick="setBatas()">Simpan</button>
-</div>
+<div id="channels"></div>
 
-<div id="leds"></div>
+</div>
 
 <script>
-const client = mqtt.connect('wss://broker.emqx.io:8084/mqtt');
+const client = mqtt.connect("wss://broker.emqx.io:8084/mqtt");
 
-const names=[
-"Royal Blue","Blue","Indigo","Red",
-"Green","White","Sump","Fan"
+// ===== LABEL BARU =====
+const names = [
+  "Royal Blue",
+  "Blue",
+  "Indigo",
+  "Red",
+  "Green",
+  "White",
+  "Sump",
+  "Fan"
 ];
 
-const leds=document.getElementById('leds');
+// ===== BUILD UI =====
+const container = document.getElementById("channels");
 
-names.forEach((n,i)=>{
-  leds.innerHTML+=`
+names.forEach((name,i)=>{
+  container.innerHTML += `
   <div class="card">
-  ${n}<br>
-  <input type="range" min="0" max="100" value="0"
-  oninput="setLED(${i},this.value)">
+    <h3>CH${i+1} - ${name}</h3>
+    <input type="range" min="0" max="255" value="0" class="slider" id="ch${i}">
+    <p id="val${i}">0</p>
   </div>`;
 });
 
-function setLED(ch,val){
-  client.publish("manual/"+ch,Math.round(val*2.55).toString());
-}
-
-function setBatas(){
-  const v=document.getElementById('batas').value;
-  client.publish("set/batasSuhu",v);
-}
-
-client.on('connect',()=>{
-  client.subscribe("suhu/#");
-  client.subscribe("status/suhu");
+// ===== CONNECT =====
+client.on("connect",()=>{
+  console.log("MQTT Connected");
 });
 
-client.on('message',(t,m)=>{
-  m=m.toString();
-  if(t=="suhu/ntc1") document.getElementById('t1').innerHTML=m;
-  if(t=="suhu/ntc2") document.getElementById('t2').innerHTML=m;
-  if(t=="status/suhu") document.getElementById('status').innerHTML=m;
-});
+// ===== MODE =====
+function setMode(m){
+  client.publish("mode",m);
+  alert("Mode: "+m);
+}
 
-// JAM REALTIME
-setInterval(()=>{
-  const d=new Date();
-  document.getElementById('clock').innerHTML=
-  d.toLocaleTimeString();
-},1000);
+// ===== SLIDER =====
+for(let i=0;i<8;i++){
+  let s=document.getElementById("ch"+i);
+  let v=document.getElementById("val"+i);
+
+  s.oninput=()=>{
+    v.innerText=s.value;
+
+    client.publish("manual/"+i,s.value);
+  }
+}
 </script>
 
 </body>
