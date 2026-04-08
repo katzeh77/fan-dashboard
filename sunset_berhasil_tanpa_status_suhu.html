@@ -34,3 +34,143 @@ button{
   background:#3b82f6;
   color:white;
   cursor:pointer;
+}
+
+button:active{
+  background:#1d4ed8;
+}
+
+input{
+  width:100%;
+  margin-bottom:5px;
+}
+
+#status{
+  text-align:center;
+  padding:5px;
+  font-size:14px;
+}
+
+/* ===== JAM ===== */
+#clock{
+  text-align:center;
+  font-size:26px;
+  font-weight:bold;
+  margin:10px 0;
+  color:#00e5ff;
+}
+</style>
+</head>
+
+<body>
+
+<div class="header">8Channel Reef Controller</div>
+<div id="status">🔌 Connecting...</div>
+
+<!-- JAM -->
+<div id="clock">00:00:00</div>
+
+<div class="card">
+<button onclick="setMode(1)">AUTO</button>
+<button onclick="setMode(0)">MANUAL</button>
+</div>
+
+<div id="channels"></div>
+
+<script>
+const client = mqtt.connect('wss://broker.emqx.io:8084/mqtt');
+
+const container = document.getElementById('channels');
+const statusEl = document.getElementById('status');
+
+// ===== LABEL CHANNEL =====
+const labels = [
+  "Royal Blue",
+  "Blue",
+  "Indigo",
+  "Red",
+  "Green",
+  "White",
+  "Sump",
+  "Fan"
+];
+
+// ===== BUAT UI =====
+for(let i=1;i<=8;i++){
+  container.innerHTML += `
+  <div class="card">
+    <h3>${i} - ${labels[i-1]}</h3>
+
+    ON <input type="time" id="on${i}">
+    PEAK <input type="time" id="peak${i}">
+    OFF <input type="time" id="off${i}">
+    MAX <input type="number" id="max${i}" value="80">
+
+    <button onclick="setSch(${i})">SAVE</button>
+  </div>`;
+}
+
+// ===== MQTT STATUS =====
+client.on('connect',()=>{
+  statusEl.innerHTML="✅ Connected MQTT";
+  statusEl.style.color="#0f0";
+});
+
+client.on('error',(err)=>{
+  statusEl.innerHTML="❌ MQTT Error";
+  statusEl.style.color="#f00";
+});
+
+// ===== MODE (SUDAH FIX ESP32) =====
+function setMode(v){
+  let mode = v==1 ? "auto" : "manual";
+  alert("Mode: "+mode);
+  client.publish('mode', mode);
+}
+
+// ===== TIME CONVERT =====
+function toMin(t){
+  if(!t){
+    alert("Isi semua jam dulu!");
+    throw "input kosong";
+  }
+  let [h,m]=t.split(':');
+  return parseInt(h)*60+parseInt(m);
+}
+
+// ===== SAVE SCHEDULE =====
+function setSch(i){
+  try{
+    let on = toMin(document.getElementById('on'+i).value);
+    let peak = toMin(document.getElementById('peak'+i).value);
+    let off = toMin(document.getElementById('off'+i).value);
+    let max = Math.round(document.getElementById('max'+i).value*2.55);
+
+    let data = `${on},${peak},${off},${max}`;
+
+    alert("Schedule dikirim CH"+i);
+    client.publish(`set/schedule/${i}`,data);
+
+  }catch(e){}
+}
+
+// ===== JAM REALTIME WIB =====
+function updateClock(){
+  let now = new Date();
+
+  // paksa WIB (UTC+7)
+  let utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+  let wib = new Date(utc + (7 * 3600000));
+
+  let h = String(wib.getHours()).padStart(2,'0');
+  let m = String(wib.getMinutes()).padStart(2,'0');
+  let s = String(wib.getSeconds()).padStart(2,'0');
+
+  document.getElementById("clock").innerHTML = `${h}:${m}:${s}`;
+}
+
+setInterval(updateClock,1000);
+</script>
+
+</body>
+</html>
