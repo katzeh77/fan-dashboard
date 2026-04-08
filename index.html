@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+</head>
+<body>
+
+<h2>A8 Style Controller</h2>
+
+<button onclick="setMode(1)">AUTO</button>
+<button onclick="setMode(0)">MANUAL</button>
+
+<div id="leds"></div>
+
+<script>
+const client = mqtt.connect('wss://broker.emqx.io:8084/mqtt');
+
+const container = document.getElementById('leds');
+
+for(let i=1;i<=8;i++){
+  container.innerHTML += `
+  <hr>
+  CH${i}<br>
+
+  ON <input type="time" id="on${i}"><br>
+  PEAK <input type="time" id="peak${i}"><br>
+  OFF <input type="time" id="off${i}"><br>
+  MAX % <input type="number" id="max${i}" value="80"><br>
+
+  <button onclick="setSch(${i})">SET</button>
+  `;
+}
+
+function setMode(v){
+  client.publish('mode/auto',v.toString());
+}
+
+function toMin(t){
+  if(!t) return 0;
+  let [h,m]=t.split(':');
+  return parseInt(h)*60+parseInt(m);
+}
+
+function setSch(i){
+  let on = toMin(document.getElementById('on'+i).value);
+  let peak = toMin(document.getElementById('peak'+i).value);
+  let off = toMin(document.getElementById('off'+i).value);
+  let max = Math.round(document.getElementById('max'+i).value*2.55);
+
+  let data = `${on},${peak},${off},${max}`;
+  client.publish(`set/schedule/${i}`,data);
+}
+</script>
+
+</body>
+</html>
