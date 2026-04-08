@@ -33,15 +33,30 @@ button{
   border-radius:10px;
   background:#3b82f6;
   color:white;
+  cursor:pointer;
 }
 
-input{width:100%;}
+button:active{
+  background:#1d4ed8;
+}
+
+input{
+  width:100%;
+  margin-bottom:5px;
+}
+
+#status{
+  text-align:center;
+  padding:5px;
+  font-size:14px;
+}
 </style>
 </head>
 
 <body>
 
 <div class="header">A8 Controller</div>
+<div id="status">🔌 Connecting...</div>
 
 <div class="card">
 <button onclick="setMode(1)">AUTO</button>
@@ -53,10 +68,12 @@ input{width:100%;}
 <script>
 const client = mqtt.connect('wss://broker.emqx.io:8084/mqtt');
 
-const container=document.getElementById('channels');
+const container = document.getElementById('channels');
+const statusEl = document.getElementById('status');
 
+// ===== BUAT UI =====
 for(let i=1;i<=8;i++){
-  container.innerHTML+=`
+  container.innerHTML += `
   <div class="card">
     <h3>Channel ${i}</h3>
 
@@ -69,22 +86,53 @@ for(let i=1;i<=8;i++){
   </div>`;
 }
 
+// ===== MQTT STATUS =====
+client.on('connect',()=>{
+  statusEl.innerHTML="✅ Connected MQTT";
+  statusEl.style.color="#0f0";
+  console.log("MQTT CONNECTED");
+});
+
+client.on('error',(err)=>{
+  statusEl.innerHTML="❌ MQTT Error";
+  statusEl.style.color="#f00";
+  console.log(err);
+});
+
+// ===== MODE =====
 function setMode(v){
+  console.log("MODE:",v);
+  alert("Mode dikirim: "+(v==1?"AUTO":"MANUAL"));
   client.publish('mode/auto',v.toString());
 }
 
+// ===== TIME CONVERT =====
 function toMin(t){
+  if(!t){
+    alert("Isi semua jam dulu!");
+    throw "input kosong";
+  }
   let [h,m]=t.split(':');
   return parseInt(h)*60+parseInt(m);
 }
 
+// ===== SAVE SCHEDULE =====
 function setSch(i){
-  let on=toMin(document.getElementById('on'+i).value);
-  let peak=toMin(document.getElementById('peak'+i).value);
-  let off=toMin(document.getElementById('off'+i).value);
-  let max=Math.round(document.getElementById('max'+i).value*2.55);
+  try{
+    let on = toMin(document.getElementById('on'+i).value);
+    let peak = toMin(document.getElementById('peak'+i).value);
+    let off = toMin(document.getElementById('off'+i).value);
+    let max = Math.round(document.getElementById('max'+i).value*2.55);
 
-  client.publish(`set/schedule/${i}`,`${on},${peak},${off},${max}`);
+    let data = `${on},${peak},${off},${max}`;
+
+    console.log("SEND:",i,data);
+    alert("Schedule dikirim CH"+i);
+
+    client.publish(`set/schedule/${i}`,data);
+  }catch(e){
+    console.log("ERROR INPUT",e);
+  }
 }
 </script>
 
