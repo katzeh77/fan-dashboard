@@ -64,7 +64,7 @@ input{
 
 <body>
 
-<div class="header">A8 Controller</div>
+<div class="header">8Channel Reef Controller</div>
 <div id="status">🔌 Connecting...</div>
 
 <!-- JAM -->
@@ -99,7 +99,7 @@ const labels = [
 for(let i=1;i<=8;i++){
   container.innerHTML += `
   <div class="card">
-    <h3>CH${i} - ${labels[i-1]}</h3>
+    <h3>${i} - ${labels[i-1]}</h3>
 
     ON <input type="time" id="on${i}">
     PEAK <input type="time" id="peak${i}">
