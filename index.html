@@ -51,7 +51,7 @@ input{
   font-size:14px;
 }
 
-/* ===== JAM ===== */
+/* JAM */
 #clock{
   text-align:center;
   font-size:26px;
@@ -59,16 +59,50 @@ input{
   margin:10px 0;
   color:#00e5ff;
 }
+
+/* SUHU */
+.temp-box{
+  display:flex;
+  justify-content:space-around;
+  margin:10px;
+}
+
+.temp{
+  background:#1f2937;
+  padding:15px;
+  border-radius:12px;
+  width:45%;
+  text-align:center;
+  transition:0.3s;
+}
+
+.temp span{
+  font-size:22px;
+  font-weight:bold;
+}
 </style>
 </head>
 
 <body>
 
-<div class="header">8Channel Reef Controller</div>
+<div class="header">A8 Controller</div>
 <div id="status">🔌 Connecting...</div>
 
 <!-- JAM -->
 <div id="clock">00:00:00</div>
+
+<!-- SUHU -->
+<div class="temp-box">
+  <div class="temp" id="temp1Box">
+    Suhu Atas (NTC1)<br>
+    <span id="temp1">-- °C</span>
+  </div>
+
+  <div class="temp" id="temp2Box">
+    Suhu Bawah (NTC2)<br>
+    <span id="temp2">-- °C</span>
+  </div>
+</div>
 
 <div class="card">
 <button onclick="setMode(1)">AUTO</button>
@@ -99,7 +133,7 @@ const labels = [
 for(let i=1;i<=8;i++){
   container.innerHTML += `
   <div class="card">
-    <h3>${i} - ${labels[i-1]}</h3>
+    <h3>CH${i} - ${labels[i-1]}</h3>
 
     ON <input type="time" id="on${i}">
     PEAK <input type="time" id="peak${i}">
@@ -110,10 +144,14 @@ for(let i=1;i<=8;i++){
   </div>`;
 }
 
-// ===== MQTT STATUS =====
+// ===== MQTT CONNECT =====
 client.on('connect',()=>{
   statusEl.innerHTML="✅ Connected MQTT";
   statusEl.style.color="#0f0";
+
+  // subscribe suhu
+  client.subscribe('suhu/ntc1');
+  client.subscribe('suhu/ntc2');
 });
 
 client.on('error',(err)=>{
@@ -121,7 +159,42 @@ client.on('error',(err)=>{
   statusEl.style.color="#f00";
 });
 
-// ===== MODE (SUDAH FIX ESP32) =====
+// ===== TERIMA DATA MQTT =====
+client.on('message',(topic,message)=>{
+  let msg = message.toString();
+
+  if(topic === 'suhu/ntc1'){
+    updateTemp('temp1','temp1Box',msg);
+  }
+
+  if(topic === 'suhu/ntc2'){
+    updateTemp('temp2','temp2Box',msg);
+  }
+});
+
+// ===== UPDATE SUHU =====
+function updateTemp(id,box,val){
+  let t = parseFloat(val);
+
+  if(isNaN(t)){
+    document.getElementById(id).innerText = "-- °C";
+    return;
+  }
+
+  document.getElementById(id).innerText = t.toFixed(1)+" °C";
+
+  let el = document.getElementById(box);
+
+  if(t >= 50){
+    el.style.background = "rgba(255,0,0,0.5)";
+  }else if(t >= 40){
+    el.style.background = "rgba(255,200,0,0.4)";
+  }else{
+    el.style.background = "#1f2937";
+  }
+}
+
+// ===== MODE =====
 function setMode(v){
   let mode = v==1 ? "auto" : "manual";
   alert("Mode: "+mode);
@@ -154,11 +227,9 @@ function setSch(i){
   }catch(e){}
 }
 
-// ===== JAM REALTIME WIB =====
+// ===== JAM WIB =====
 function updateClock(){
   let now = new Date();
-
-  // paksa WIB (UTC+7)
   let utc = now.getTime() + (now.getTimezoneOffset() * 60000);
   let wib = new Date(utc + (7 * 3600000));
 
