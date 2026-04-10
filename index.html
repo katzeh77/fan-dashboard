@@ -7,206 +7,241 @@
 <style>
 body{
   margin:0;
-  font-family:Arial, sans-serif;
+  font-family:sans-serif;
   background:#0b0f1a;
   color:#fff;
 }
 
-/* HEADER */
 .header{
   padding:15px;
   text-align:center;
   font-size:20px;
   background:#111827;
-  position:sticky;
-  top:0;
 }
 
-#clock{
-  font-size:14px;
-  color:#9ca3af;
-}
-
-/* STATUS */
-#status{
-  text-align:center;
-  padding:8px;
-  font-size:14px;
-}
-
-/* CARD */
 .card{
   background:#1f2937;
   margin:10px;
   padding:15px;
   border-radius:15px;
-  box-shadow:0 4px 10px rgba(0,0,0,0.5);
 }
 
-/* BUTTON */
 button{
-  width:48%;
-  padding:12px;
-  margin:1%;
+  padding:10px;
+  margin:5px;
   border:none;
-  border-radius:12px;
+  border-radius:10px;
   background:#3b82f6;
   color:white;
-  font-size:14px;
+  cursor:pointer;
 }
 
 button:active{
   background:#1d4ed8;
 }
 
-/* INPUT */
 input{
   width:100%;
-  padding:8px;
-  border-radius:8px;
-  border:none;
   margin-bottom:5px;
 }
 
-/* GRID */
-.grid{
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:5px;
+#status{
+  text-align:center;
+  padding:5px;
+  font-size:14px;
 }
 
-/* TEMP */
-.temp{
+#clock{
+  text-align:center;
+  font-size:26px;
+  font-weight:bold;
+  margin:10px 0;
+  color:#00e5ff;
+}
+
+.temp-box{
   display:flex;
-  justify-content:space-between;
-  font-size:14px;
+  justify-content:space-around;
+}
+
+.temp{
+  background:#111827;
+  padding:10px;
+  border-radius:10px;
+  width:45%;
+  text-align:center;
+}
+
+.temp span{
+  font-size:22px;
+  font-weight:bold;
+  color:#00ffcc;
 }
 </style>
 </head>
 
 <body>
 
-<div class="header">
-  A8 Reef Controller
-  <div id="clock">--:--</div>
-</div>
-
+<div class="header">A8 Controller</div>
 <div id="status">🔌 Connecting...</div>
 
+<div id="clock">00:00:00</div>
+
+<!-- ===== SUHU ===== -->
 <div class="card">
-  <button onclick="setMode(1)">AUTO</button>
-  <button onclick="setMode(0)">MANUAL</button>
+  <div class="temp-box">
+    <div class="temp">
+      <h3>Suhu Atas</h3>
+      <span id="t1">-- °C</span>
+    </div>
+    <div class="temp">
+      <h3>Suhu Bawah</h3>
+      <span id="t2">-- °C</span>
+    </div>
+  </div>
 </div>
 
-<div class="card temp">
-  <div>🌡️ Suhu Atas: <span id="t1">--</span> °C</div>
-  <div>🌡️ Suhu Bawah: <span id="t2">--</span> °C</div>
+<!-- ===== BATAS SUHU ===== -->
+<div class="card">
+  <h3>Batas Maksimal Suhu</h3>
+  <input type="number" id="batas" placeholder="contoh 30">
+  <button onclick="saveBatas()">SAVE</button>
 </div>
 
+<!-- ===== MODE ===== -->
 <div class="card">
-  Batas Suhu:
-  <input type="number" id="maxTemp" value="50">
-  <button onclick="setTemp()">SAVE</button>
+<button onclick="setMode(1)">AUTO</button>
+<button onclick="setMode(0)">MANUAL</button>
 </div>
 
 <div id="channels"></div>
 
 <script>
-
-// ===== MQTT =====
 const client = mqtt.connect('wss://broker.emqx.io:8084/mqtt');
 
-const statusEl = document.getElementById('status');
 const container = document.getElementById('channels');
+const statusEl = document.getElementById('status');
 
-// ===== NAMA CHANNEL =====
-const names = [
-"Royal Blue","Blue","Indigo","Red",
-"Green","White","Sump"
+// ===== LABEL CHANNEL =====
+const labels = [
+  "Royal Blue",
+  "Blue",
+  "Indigo",
+  "Red",
+  "Green",
+  "White",
+  "Sump"
 ];
 
-// ===== UI CHANNEL =====
-names.forEach((n,i)=>{
-  let ch=i+1;
-
+// ===== BUAT UI =====
+for(let i=1;i<=7;i++){
   container.innerHTML += `
   <div class="card">
-    <b>${n}</b>
+    <h3>CH${i} - ${labels[i-1]}</h3>
 
-    <div class="grid">
-      <input type="time" id="on${ch}">
-      <input type="time" id="peak${ch}">
-      <input type="time" id="off${ch}">
-      <input type="number" id="max${ch}" value="80">
-    </div>
+    ON <input type="time" id="on${i}">
+    PEAK <input type="time" id="peak${i}">
+    OFF <input type="time" id="off${i}">
+    MAX <input type="number" id="max${i}" value="80">
 
-    <button onclick="save(${ch})">SAVE</button>
+    <button onclick="setSch(${i})">SAVE</button>
   </div>`;
-});
-
-// ===== CLOCK =====
-function updateClock(){
-  let d=new Date();
-  let h=d.getHours().toString().padStart(2,'0');
-  let m=d.getMinutes().toString().padStart(2,'0');
-  document.getElementById('clock').innerText = h+":"+m;
 }
-setInterval(updateClock,1000);
 
 // ===== MQTT =====
 client.on('connect',()=>{
-  statusEl.innerHTML="✅ Connected";
+  statusEl.innerHTML="✅ Connected MQTT";
   statusEl.style.color="#0f0";
 
   client.subscribe("suhu/ntc1");
   client.subscribe("suhu/ntc2");
+  client.subscribe("status/suhu");
 });
 
-client.on('message',(topic,msg)=>{
-  let m=msg.toString();
+client.on('message',(topic,message)=>{
+  let msg = message.toString();
 
-  if(topic=="suhu/ntc1"){
-    document.getElementById('t1').innerText=parseFloat(m).toFixed(1);
+  if(topic==="suhu/ntc1"){
+    document.getElementById("t1").innerText =
+      msg < 0 ? "--" : parseFloat(msg).toFixed(1)+" °C";
   }
 
-  if(topic=="suhu/ntc2"){
-    document.getElementById('t2').innerText=parseFloat(m).toFixed(1);
+  if(topic==="suhu/ntc2"){
+    document.getElementById("t2").innerText =
+      msg < 0 ? "--" : parseFloat(msg).toFixed(1)+" °C";
+  }
+
+  if(topic==="status/suhu"){
+    if(msg==="OVERHEAT"){
+      statusEl.innerHTML="🔥 OVERHEAT (Lampu Mati)";
+      statusEl.style.color="red";
+    }else{
+      statusEl.innerHTML="✅ NORMAL";
+      statusEl.style.color="#0f0";
+    }
   }
 });
 
 // ===== MODE =====
 function setMode(v){
-  client.publish("mode", v==1?"auto":"manual");
-  alert("Mode: "+(v?"AUTO":"MANUAL"));
+  let mode = v==1 ? "auto" : "manual";
+  alert("Mode: "+mode);
+  client.publish('mode', mode);
 }
 
-// ===== SAVE TEMP =====
-function setTemp(){
-  let val=document.getElementById('maxTemp').value;
+// ===== SAVE BATAS SUHU =====
+function saveBatas(){
+  let val = document.getElementById("batas").value;
+
+  if(!val){
+    alert("Isi batas suhu dulu!");
+    return;
+  }
+
   client.publish("set/batasSuhu", val);
-  alert("Batas suhu dikirim");
+  alert("Batas suhu dikirim: "+val+"°C");
 }
 
-// ===== TIME CONVERT =====
+// ===== TIME =====
 function toMin(t){
+  if(!t){
+    alert("Isi semua jam dulu!");
+    throw "input kosong";
+  }
   let [h,m]=t.split(':');
-  return parseInt(h)*60 + parseInt(m);
+  return parseInt(h)*60+parseInt(m);
 }
 
 // ===== SAVE SCHEDULE =====
-function save(ch){
-  let on = toMin(document.getElementById('on'+ch).value);
-  let peak = toMin(document.getElementById('peak'+ch).value);
-  let off = toMin(document.getElementById('off'+ch).value);
-  let max = Math.round(document.getElementById('max'+ch).value * 2.55);
+function setSch(i){
+  try{
+    let on = toMin(document.getElementById('on'+i).value);
+    let peak = toMin(document.getElementById('peak'+i).value);
+    let off = toMin(document.getElementById('off'+i).value);
+    let max = Math.round(document.getElementById('max'+i).value*2.55);
 
-  let data = `${on},${peak},${off},${max}`;
+    let data = `${on},${peak},${off},${max}`;
 
-  client.publish("set/schedule/"+ch, data);
+    alert("Schedule dikirim CH"+i);
+    client.publish(`set/schedule/${i}`,data);
 
-  alert("Saved CH"+ch);
+  }catch(e){}
 }
 
+// ===== JAM WIB =====
+function updateClock(){
+  let now = new Date();
+  let utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+  let wib = new Date(utc + (7 * 3600000));
+
+  let h = String(wib.getHours()).padStart(2,'0');
+  let m = String(wib.getMinutes()).padStart(2,'0');
+  let s = String(wib.getSeconds()).padStart(2,'0');
+
+  document.getElementById("clock").innerHTML = `${h}:${m}:${s}`;
+}
+
+setInterval(updateClock,1000);
 </script>
 
 </body>
