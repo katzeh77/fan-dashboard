@@ -47,22 +47,52 @@ body{
   box-shadow:0 5px 20px rgba(0,0,0,0.4);
 }
 
-/* GRID */
-.grid{
-  display:grid;
-  grid-template-columns:1fr 1fr;
+/* MODE */
+.mode{
+  display:flex;
   gap:10px;
 }
 
-/* INPUT */
-input{
+.mode button{
+  flex:1;
+}
+
+/* SUHU */
+.temp{
+  display:flex;
+  justify-content:space-between;
+  font-size:14px;
+}
+
+/* INPUT ROW KOMPAK */
+.row{
+  display:flex;
+  gap:6px;
+  align-items:center;
+}
+
+.row div{
+  flex:1;
+}
+
+.row label{
+  font-size:11px;
+  opacity:0.7;
+}
+
+.row input{
   width:100%;
-  padding:8px;
-  border:none;
-  border-radius:10px;
-  margin-top:5px;
+  padding:6px;
+  font-size:12px;
+  border-radius:8px;
+  margin-top:2px;
   background:#0f172a;
   color:#fff;
+}
+
+/* MAX lebih kecil */
+.max-box{
+  max-width:65px;
 }
 
 /* BUTTON */
@@ -81,35 +111,11 @@ button:active{
   background:#1d4ed8;
 }
 
-/* CHANNEL TITLE */
+/* TITLE */
 .ch-title{
-  font-size:16px;
+  font-size:15px;
   font-weight:bold;
   margin-bottom:10px;
-}
-
-/* MODE BUTTON */
-.mode{
-  display:flex;
-  gap:10px;
-}
-
-.mode button{
-  flex:1;
-}
-
-/* SUHU */
-.temp{
-  display:flex;
-  justify-content:space-between;
-  font-size:14px;
-}
-
-/* RESPONSIVE */
-@media(max-width:400px){
-  .grid{
-    grid-template-columns:1fr;
-  }
 }
 </style>
 </head>
@@ -163,17 +169,32 @@ const chName = [
   "Sump"
 ];
 
-// ===== BUAT UI =====
+// ===== BUAT CHANNEL UI =====
 for(let i=1;i<=7;i++){
   container.innerHTML += `
   <div class="card">
     <div class="ch-title">${chName[i-1]}</div>
 
-    <div class="grid">
-      <div>ON <input type="time" id="on${i}"></div>
-      <div>PEAK <input type="time" id="peak${i}"></div>
-      <div>OFF <input type="time" id="off${i}"></div>
-      <div>MAX <input type="number" id="max${i}" value="80"></div>
+    <div class="row">
+      <div>
+        <label>ON</label>
+        <input type="time" id="on${i}">
+      </div>
+
+      <div>
+        <label>PEAK</label>
+        <input type="time" id="peak${i}">
+      </div>
+
+      <div>
+        <label>OFF</label>
+        <input type="time" id="off${i}">
+      </div>
+
+      <div class="max-box">
+        <label>MAX</label>
+        <input type="number" id="max${i}" value="80">
+      </div>
     </div>
 
     <button onclick="setSch(${i})">SAVE</button>
@@ -211,7 +232,7 @@ function setMode(v){
   client.publish('mode', v==1?"auto":"manual");
 }
 
-// ===== TIME TO MIN =====
+// ===== CONVERT TIME =====
 function toMin(t){
   if(!t) throw "kosong";
   let [h,m]=t.split(':');
@@ -236,7 +257,7 @@ function setSch(i){
   }
 }
 
-// ===== BATAS SUHU =====
+// ===== SET BATAS SUHU =====
 function setBatas(){
   let val = document.getElementById("batas").value;
   client.publish("set/batasSuhu", val);
