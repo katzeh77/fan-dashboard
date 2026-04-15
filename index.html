@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+
+<style>
+body{
+  margin:0;
+  font-family:sans-serif;
+  background:#0b0f1a;
+  color:#fff;
+}
+
+.header{
+  padding:10px;
+  text-align:center;
+  font-size:18px;
+  background:#111827;
+}
+
+#clock{
+  font-size:22px;
+  margin-top:5px;
+  font-weight:bold;
+}
+
+.card{
+  background:#1f2937;
+  margin:10px;
+  padding:12px;
+  border-radius:12px;
+}
+
+button{
+  padding:6px;
+  margin-top:6px;
+  border:none;
+  border-radius:8px;
+  background:#374151;
+  color:white;
+  cursor:pointer;
+  font-size:12px;
+}
+
+/* ACTIVE STATES */
+.btn-auto.active{
+  background:#16a34a; /* hijau */
+}
+
+.btn-manual.active{
+  background:#ea580c; /* orange */
+}
+
+input{
+  width:100%;
+  border-radius:6px;
+  border:none;
+  padding:4px;
+  font-size:12px;
+}
+
+.row{
+  display:flex;
+  gap:4px;
+}
+
+.row div{
+  flex:1;
+  text-align:center;
+  font-size:11px;
+}
+
+#status{
+  text-align:center;
+  padding:5px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="header">
+  A8 Controller
+  <div id="clock">--:--:--</div>
+</div>
+
+<div id="status">🔌 Connecting...</div>
+
+<div class="card" style="text-align:center;">
+<button id="btnAuto" class="btn-auto" onclick="setMode('auto')">AUTO</button>
+<button id="btnManual" class="btn-manual" onclick="setMode('manual')">MANUAL</button>
+</div>
+
+<div id="channels"></div>
+
+<script>
+const client = mqtt.connect('wss://broker.emqx.io:8084/mqtt');
+
+let connected = false;
+
+const statusEl = document.getElementById('status');
+const container = document.getElementById('channels');
+
+const btnAuto = document.getElementById('btnAuto');
+const btnManual = document.getElementById('btnManual');
+
+const labels = [
+"Royal Blue","Blue","Indigo","Red",
+"Green","White","Sump"
+];
+
+// ===== CLOCK =====
+function updateClock(){
+  const now = new Date();
+  document.getElementById('clock').innerText =
+    now.toLocaleTimeString('en-GB');
+}
+setInterval(updateClock,1000);
+
+// ===== MODE UI UPDATE =====
+function updateModeUI(mode){
+  btnAuto.classList.remove('active');
+  btnManual.classList.remove('active');
+
+  if(mode === 'auto'){
+    btnAuto.classList.add('active');
+  }else{
+    btnManual.classList.add('active');
+  }
+}
+
+// ===== SAFE PUBLISH =====
+function safePublish(topic,msg){
+  if(!connected){
+    alert("MQTT belum connect!");
+    return;
+  }
+  client.publish(topic,msg);
+}
+
+// ===== UI CHANNEL =====
+for(let i=1;i<=7;i++){
+  container.innerHTML += `
+  <div class="card">
+    <b>${labels[i-1]}</b>
+
+    <div class="row">
+      <div>ON<br><input type="time" id="on${i}"></div>
+      <div>PEAK<br><input type="time" id="peak${i}"></div>
+      <div>OFF<br><input type="time" id="off${i}"></div>
+      <div>MAX<br><input type="number" id="max${i}" value="80"></div>
+    </div>
+
+    <button onclick="setSch(${i})">SAVE</button>
+
+    <div style="margin-top:6px;">
+      Manual %
+      <input type="number" id="man${i}" value="0">
+      <button onclick="setManual(${i})">SET</button>
+    </div>
+  </div>`;
+}
+
+// ===== MQTT =====
+client.on('connect',()=>{
+  connected = true;
+  statusEl.innerHTML="✅ Connected";
+  statusEl.style.color="#0f0";
+});
+
+client.on('offline',()=>{
+  connected = false;
+  statusEl.innerHTML="❌ Offline";
+  statusEl.style.color="#f00";
+});
+
+client.on('error',()=>{
+  connected = false;
+  statusEl.innerHTML="❌ Error";
+  statusEl.style.color="#f00";
+});
+
+// ===== MODE =====
+function setMode(mode){
+  safePublish('mode',mode);
+  updateModeUI(mode); // langsung ubah UI
+}
+
+// ===== TIME CONVERT =====
+function toMin(t){
+  let [h,m]=t.split(':');
+  return parseInt(h)*60+parseInt(m);
+}
+
+// ===== SAVE =====
+function setSch(i){
+  let on = toMin(document.getElementById('on'+i).value);
+  let peak = toMin(document.getElementById('peak'+i).value);
+  let off = toMin(document.getElementById('off'+i).value);
+  let max = Math.round(document.getElementById('max'+i).value*2.55);
+
+  let data = `${on},${peak},${off},${max}`;
+
+  safePublish(`set/schedule/${i}`,data);
+  alert("Saved CH"+i);
+}
+
+// ===== MANUAL =====
+function setManual(i){
+  let val = parseInt(document.getElementById('man'+i).value);
+
+  if(isNaN(val)) val=0;
+  val = Math.max(0,Math.min(100,val));
+
+  let pwm = Math.round(val*2.55);
+
+  safePublish(`manual/${i}`,pwm.toString());
+}
+</script>
+
+</body>
+</html>
