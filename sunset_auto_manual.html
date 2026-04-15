@@ -37,14 +37,19 @@ button{
   margin-top:6px;
   border:none;
   border-radius:8px;
-  background:#3b82f6;
+  background:#374151;
   color:white;
   cursor:pointer;
   font-size:12px;
 }
 
-button:disabled{
-  background:#555;
+/* ACTIVE STATES */
+.btn-auto.active{
+  background:#16a34a; /* hijau */
+}
+
+.btn-manual.active{
+  background:#ea580c; /* orange */
 }
 
 input{
@@ -83,8 +88,8 @@ input{
 <div id="status">🔌 Connecting...</div>
 
 <div class="card" style="text-align:center;">
-<button id="btnAuto" onclick="setMode('auto')">AUTO</button>
-<button id="btnManual" onclick="setMode('manual')">MANUAL</button>
+<button id="btnAuto" class="btn-auto" onclick="setMode('auto')">AUTO</button>
+<button id="btnManual" class="btn-manual" onclick="setMode('manual')">MANUAL</button>
 </div>
 
 <div id="channels"></div>
@@ -97,6 +102,9 @@ let connected = false;
 const statusEl = document.getElementById('status');
 const container = document.getElementById('channels');
 
+const btnAuto = document.getElementById('btnAuto');
+const btnManual = document.getElementById('btnManual');
+
 const labels = [
 "Royal Blue","Blue","Indigo","Red",
 "Green","White","Sump"
@@ -106,9 +114,21 @@ const labels = [
 function updateClock(){
   const now = new Date();
   document.getElementById('clock').innerText =
-    now.toLocaleTimeString('en-GB'); // 24 jam
+    now.toLocaleTimeString('en-GB');
 }
 setInterval(updateClock,1000);
+
+// ===== MODE UI UPDATE =====
+function updateModeUI(mode){
+  btnAuto.classList.remove('active');
+  btnManual.classList.remove('active');
+
+  if(mode === 'auto'){
+    btnAuto.classList.add('active');
+  }else{
+    btnManual.classList.add('active');
+  }
+}
 
 // ===== SAFE PUBLISH =====
 function safePublish(topic,msg){
@@ -119,7 +139,7 @@ function safePublish(topic,msg){
   client.publish(topic,msg);
 }
 
-// ===== UI =====
+// ===== UI CHANNEL =====
 for(let i=1;i<=7;i++){
   container.innerHTML += `
   <div class="card">
@@ -164,14 +184,10 @@ client.on('error',()=>{
 // ===== MODE =====
 function setMode(mode){
   safePublish('mode',mode);
-
-  // kasih delay biar ESP32 siap
-  setTimeout(()=>{
-    alert("Mode: "+mode.toUpperCase());
-  },200);
+  updateModeUI(mode); // langsung ubah UI
 }
 
-// ===== TIME =====
+// ===== TIME CONVERT =====
 function toMin(t){
   let [h,m]=t.split(':');
   return parseInt(h)*60+parseInt(m);
@@ -200,8 +216,6 @@ function setManual(i){
   let pwm = Math.round(val*2.55);
 
   safePublish(`manual/${i}`,pwm.toString());
-
-  alert("Manual CH"+i+" = "+val+"%");
 }
 </script>
 
