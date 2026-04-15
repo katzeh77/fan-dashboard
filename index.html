@@ -32,15 +32,8 @@ body{
   border-radius:12px;
 }
 
-.temp{
-  display:flex;
-  justify-content:space-between;
-  font-size:14px;
-}
-
 button{
   padding:6px;
-  margin-top:6px;
   border:none;
   border-radius:8px;
   background:#374151;
@@ -71,6 +64,11 @@ input{
   font-size:11px;
 }
 
+.tempBox{
+  text-align:center;
+  font-size:14px;
+}
+
 #status{
   text-align:center;
   padding:5px;
@@ -87,24 +85,33 @@ input{
 
 <div id="status">🔌 Connecting...</div>
 
-<!-- ===== SUHU ===== -->
-<div class="card">
-  <div class="temp">Suhu Atas: <span id="t1">--</span> °C</div>
-  <div class="temp">Suhu Bawah: <span id="t2">--</span> °C</div>
-
-  <div style="margin-top:8px;">
-    Batas Maks:
-    <input type="number" id="batas" value="50">
-    <button onclick="setBatas()">SAVE</button>
-  </div>
-</div>
-
-<!-- ===== MODE ===== -->
+<!-- MODE -->
 <div class="card" style="text-align:center;">
 <button id="btnAuto" class="btn-auto" onclick="setMode('auto')">AUTO</button>
 <button id="btnManual" class="btn-manual" onclick="setMode('manual')">MANUAL</button>
 </div>
 
+<!-- SUHU -->
+<div class="card">
+  <div class="row">
+    <div class="tempBox">
+      Atas<br><span id="t1">--</span> °C
+    </div>
+    <div class="tempBox">
+      Bawah<br><span id="t2">--</span> °C
+    </div>
+  </div>
+
+  <div style="margin-top:8px;">
+    Batas Maks (°C)
+    <input type="number" id="batas" value="50">
+    <button onclick="setBatas()">SAVE</button>
+  </div>
+
+  <div id="suhuStatus" style="margin-top:6px;text-align:center;"></div>
+</div>
+
+<!-- CHANNEL -->
 <div id="channels"></div>
 
 <script>
@@ -112,14 +119,10 @@ const client = mqtt.connect('wss://broker.emqx.io:8084/mqtt');
 
 let connected=false;
 
-const statusEl=document.getElementById('status');
-const btnAuto=document.getElementById('btnAuto');
-const btnManual=document.getElementById('btnManual');
-
-const labels=[
-"Royal Blue","Blue","Indigo","Red",
-"Green","White","Sump"
-];
+const statusEl = document.getElementById('status');
+const btnAuto = document.getElementById('btnAuto');
+const btnManual = document.getElementById('btnManual');
+const container = document.getElementById('channels');
 
 // ===== CLOCK =====
 setInterval(()=>{
@@ -136,13 +139,13 @@ function updateModeUI(mode){
   else btnManual.classList.add('active');
 }
 
-// ===== SAFE SEND =====
-function send(topic,msg){
+// ===== SAFE MQTT =====
+function pub(t,m){
   if(!connected){
-    alert("MQTT belum connect");
+    alert("MQTT belum connect!");
     return;
   }
-  client.publish(topic,msg);
+  client.publish(t,m);
 }
 
 // ===== MQTT =====
@@ -153,17 +156,12 @@ client.on('connect',()=>{
 
   client.subscribe("suhu/ntc1");
   client.subscribe("suhu/ntc2");
-  client.subscribe("status/mode");
   client.subscribe("status/suhu");
-});
-
-client.on('offline',()=>{
-  connected=false;
-  statusEl.innerHTML="❌ Offline";
+  client.subscribe("status/mode");
 });
 
 client.on('message',(topic,msg)=>{
-  msg=msg.toString();
+  msg = msg.toString();
 
   if(topic==="suhu/ntc1"){
     document.getElementById('t1').innerText=parseFloat(msg).toFixed(1);
@@ -173,33 +171,45 @@ client.on('message',(topic,msg)=>{
     document.getElementById('t2').innerText=parseFloat(msg).toFixed(1);
   }
 
-  if(topic==="status/mode"){
-    updateModeUI(msg);
+  if(topic==="status/suhu"){
+    const el=document.getElementById('suhuStatus');
+
+    if(msg==="OVERHEAT"){
+      el.innerHTML="🔥 OVERHEAT (Lampu mati)";
+      el.style.color="red";
+    }else{
+      el.innerHTML="✅ NORMAL";
+      el.style.color="lightgreen";
+    }
   }
 
-  if(topic==="status/suhu"){
-    if(msg==="OVERHEAT"){
-      statusEl.innerHTML="🔥 OVERHEAT!";
-      statusEl.style.color="red";
-    }
+  if(topic==="status/mode"){
+    updateModeUI(msg);
   }
 });
 
 // ===== MODE =====
-function setMode(mode){
-  send("mode",mode);
+function setMode(m){
+  pub("mode",m);
+  updateModeUI(m);
 }
 
-// ===== BATAS =====
+// ===== BATAS SUHU =====
 function setBatas(){
-  let val=document.getElementById('batas').value;
-  send("set/batasSuhu",val);
-  alert("Batas suhu disimpan");
+  let v=document.getElementById('batas').value;
+  pub("set/batasSuhu",v);
+  alert("Batas suhu disimpan: "+v);
 }
+
+// ===== LABEL =====
+const labels=[
+"Royal Blue","Blue","Indigo","Red",
+"Green","White","Sump"
+];
 
 // ===== CHANNEL UI =====
 for(let i=1;i<=7;i++){
-  document.getElementById('channels').innerHTML+=`
+  container.innerHTML+=`
   <div class="card">
     <b>${labels[i-1]}</b>
 
@@ -221,28 +231,26 @@ for(let i=1;i<=7;i++){
 }
 
 // ===== SAVE =====
+function toMin(t){
+  let [h,m]=t.split(':');
+  return parseInt(h)*60+parseInt(m);
+}
+
 function save(i){
   let on=toMin(document.getElementById('on'+i).value);
   let peak=toMin(document.getElementById('peak'+i).value);
   let off=toMin(document.getElementById('off'+i).value);
   let max=Math.round(document.getElementById('max'+i).value*2.55);
 
-  send(`set/schedule/${i}`,`${on},${peak},${off},${max}`);
+  pub(`set/schedule/${i}`,`${on},${peak},${off},${max}`);
+  alert("Saved CH"+i);
 }
 
 // ===== MANUAL =====
 function manual(i){
-  let val=parseInt(document.getElementById('man'+i).value);
-  if(isNaN(val)) val=0;
-
-  let pwm=Math.round(val*2.55);
-  send(`manual/${i}`,pwm.toString());
-}
-
-// ===== UTIL =====
-function toMin(t){
-  let [h,m]=t.split(':');
-  return parseInt(h)*60+parseInt(m);
+  let v=parseInt(document.getElementById('man'+i).value);
+  v=Math.max(0,Math.min(100,v));
+  pub(`manual/${i}`,Math.round(v*2.55).toString());
 }
 </script>
 
