@@ -2,120 +2,67 @@
 <html>
 <head>
 <meta name="viewport" content="width=device-width,initial-scale=1">
-
 <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
 
 <style>
 body{
   margin:0;
-  font-family: 'Segoe UI', sans-serif;
-  background:#0f172a;
+  font-family:sans-serif;
+  background:#0b0f1a;
   color:#fff;
 }
 
-/* HEADER */
 .header{
-  text-align:center;
   padding:15px;
+  text-align:center;
   font-size:20px;
-  font-weight:bold;
-  background:#020617;
-  border-bottom:1px solid #1e293b;
+  background:#111827;
 }
 
-/* JAM */
-.clock{
-  text-align:center;
-  font-size:28px;
-  margin-top:10px;
-  font-weight:bold;
-}
-
-/* STATUS */
-#status{
-  text-align:center;
-  font-size:14px;
-  margin-bottom:10px;
-}
-
-/* CARD */
 .card{
-  background:#1e293b;
+  background:#1f2937;
   margin:10px;
-  padding:15px;
-  border-radius:18px;
-  box-shadow:0 5px 20px rgba(0,0,0,0.4);
+  padding:12px;
+  border-radius:12px;
 }
 
-/* MODE */
-.mode{
-  display:flex;
-  gap:10px;
+button{
+  padding:6px;
+  margin-top:6px;
+  border:none;
+  border-radius:8px;
+  background:#3b82f6;
+  color:white;
+  cursor:pointer;
+  font-size:12px;
 }
 
-.mode button{
-  flex:1;
+button:active{ background:#1d4ed8; }
+
+input{
+  width:100%;
+  border-radius:6px;
+  border:none;
+  padding:4px;
+  font-size:12px;
 }
 
-/* SUHU */
-.temp{
-  display:flex;
-  justify-content:space-between;
-  font-size:14px;
-}
-
-/* INPUT ROW KOMPAK */
 .row{
   display:flex;
-  gap:6px;
+  gap:4px;
   align-items:center;
 }
 
 .row div{
   flex:1;
-}
-
-.row label{
+  text-align:center;
   font-size:11px;
-  opacity:0.7;
 }
 
-.row input{
-  width:100%;
-  padding:6px;
-  font-size:12px;
-  border-radius:8px;
-  margin-top:2px;
-  background:#0f172a;
-  color:#fff;
-}
-
-/* MAX lebih kecil */
-.max-box{
-  max-width:65px;
-}
-
-/* BUTTON */
-button{
-  width:100%;
-  padding:10px;
-  border:none;
-  border-radius:12px;
-  background:#3b82f6;
-  color:#fff;
-  margin-top:10px;
-  font-weight:bold;
-}
-
-button:active{
-  background:#1d4ed8;
-}
-
-/* TITLE */
-.ch-title{
-  font-size:15px;
-  font-weight:bold;
-  margin-bottom:10px;
+#status{
+  text-align:center;
+  padding:5px;
+  font-size:14px;
 }
 </style>
 </head>
@@ -123,159 +70,98 @@ button:active{
 <body>
 
 <div class="header">A8 Controller</div>
-
-<div class="clock" id="clock">--:--</div>
-
 <div id="status">🔌 Connecting...</div>
 
-<div class="card">
-  <div class="mode">
-    <button onclick="setMode(1)">AUTO</button>
-    <button onclick="setMode(0)">MANUAL</button>
-  </div>
-</div>
-
-<div class="card">
-  <div class="temp">
-    <div>🌡️ Atas: <span id="t1">--</span></div>
-    <div>🌡️ Bawah: <span id="t2">--</span></div>
-  </div>
-</div>
-
-<div class="card">
-  <div>Batas Suhu</div>
-  <input type="number" id="batas" value="50">
-  <button onclick="setBatas()">SAVE</button>
+<div class="card" style="text-align:center;">
+<button onclick="setMode('auto')">AUTO</button>
+<button onclick="setMode('manual')">MANUAL</button>
 </div>
 
 <div id="channels"></div>
 
 <script>
-
-// ===== MQTT =====
 const client = mqtt.connect('wss://broker.emqx.io:8084/mqtt');
 
-const statusEl = document.getElementById('status');
 const container = document.getElementById('channels');
+const statusEl = document.getElementById('status');
 
-// ===== NAMA CHANNEL =====
-const chName = [
-  "Royal Blue",
-  "Blue",
-  "Indigo",
-  "Red",
-  "Green",
-  "White",
-  "Sump"
+const labels = [
+"Royal Blue","Blue","Indigo","Red",
+"Green","White","Sump"
 ];
 
-// ===== BUAT CHANNEL UI =====
+// ===== UI =====
 for(let i=1;i<=7;i++){
   container.innerHTML += `
   <div class="card">
-    <div class="ch-title">${chName[i-1]}</div>
+    <b>${labels[i-1]}</b>
 
     <div class="row">
-      <div>
-        <label>ON</label>
-        <input type="time" id="on${i}">
-      </div>
-
-      <div>
-        <label>PEAK</label>
-        <input type="time" id="peak${i}">
-      </div>
-
-      <div>
-        <label>OFF</label>
-        <input type="time" id="off${i}">
-      </div>
-
-      <div class="max-box">
-        <label>MAX</label>
-        <input type="number" id="max${i}" value="80">
-      </div>
+      <div>ON<br><input type="time" id="on${i}"></div>
+      <div>PEAK<br><input type="time" id="peak${i}"></div>
+      <div>OFF<br><input type="time" id="off${i}"></div>
+      <div>MAX<br><input type="number" id="max${i}" value="80"></div>
     </div>
 
     <button onclick="setSch(${i})">SAVE</button>
+
+    <div style="margin-top:6px;">
+      Manual %
+      <input type="number" id="man${i}" value="0">
+      <button onclick="setManual(${i})">SET</button>
+    </div>
   </div>`;
 }
 
-// ===== JAM REALTIME =====
-function updateClock(){
-  let now = new Date();
-  let h = now.getHours().toString().padStart(2,'0');
-  let m = now.getMinutes().toString().padStart(2,'0');
-  document.getElementById("clock").innerText = h + ":" + m;
-}
-setInterval(updateClock,1000);
-updateClock();
-
-// ===== MQTT CONNECT =====
+// ===== MQTT =====
 client.on('connect',()=>{
-  statusEl.innerHTML="✅ Connected MQTT";
+  statusEl.innerHTML="✅ Connected";
   statusEl.style.color="#0f0";
-
-  client.subscribe('suhu/ntc1');
-  client.subscribe('suhu/ntc2');
-  client.subscribe('status/suhu');
 });
 
 client.on('error',()=>{
-  statusEl.innerHTML="❌ MQTT Error";
+  statusEl.innerHTML="❌ Error";
   statusEl.style.color="#f00";
 });
 
 // ===== MODE =====
-function setMode(v){
-  alert("Mode: " + (v==1?"AUTO":"MANUAL"));
-  client.publish('mode', v==1?"auto":"manual");
+function setMode(mode){
+  client.publish('mode',mode);
+  alert("Mode: "+mode.toUpperCase());
 }
 
-// ===== CONVERT TIME =====
+// ===== TIME =====
 function toMin(t){
-  if(!t) throw "kosong";
   let [h,m]=t.split(':');
-  return parseInt(h)*60 + parseInt(m);
+  return parseInt(h)*60+parseInt(m);
 }
 
-// ===== SAVE SCHEDULE =====
+// ===== SAVE =====
 function setSch(i){
-  try{
-    let on = toMin(document.getElementById('on'+i).value);
-    let peak = toMin(document.getElementById('peak'+i).value);
-    let off = toMin(document.getElementById('off'+i).value);
-    let max = Math.round(document.getElementById('max'+i).value*2.55);
+  let on = toMin(document.getElementById('on'+i).value);
+  let peak = toMin(document.getElementById('peak'+i).value);
+  let off = toMin(document.getElementById('off'+i).value);
+  let max = Math.round(document.getElementById('max'+i).value*2.55);
 
-    let data = `${on},${peak},${off},${max}`;
+  let data = `${on},${peak},${off},${max}`;
 
-    client.publish(`set/schedule/${i}`,data);
-
-    alert("Saved CH"+i);
-  }catch(e){
-    alert("Isi semua data!");
-  }
+  client.publish(`set/schedule/${i}`,data);
+  alert("Saved CH"+i);
 }
 
-// ===== SET BATAS SUHU =====
-function setBatas(){
-  let val = document.getElementById("batas").value;
-  client.publish("set/batasSuhu", val);
-  alert("Batas dikirim: "+val);
+// ===== MANUAL =====
+function setManual(i){
+  let val = parseInt(document.getElementById('man'+i).value);
+
+  if(isNaN(val)) val=0;
+  val = Math.max(0,Math.min(100,val));
+
+  let pwm = Math.round(val*2.55);
+
+  client.publish(`manual/${i}`,pwm.toString());
+
+  alert("Manual CH"+i+" = "+val+"%");
 }
-
-// ===== MQTT DATA =====
-client.on('message',(topic,msg)=>{
-  let val = msg.toString();
-
-  if(topic==="suhu/ntc1"){
-    document.getElementById("t1").innerText = val + "°C";
-  }
-  if(topic==="suhu/ntc2"){
-    document.getElementById("t2").innerText = val + "°C";
-  }
-});
-
 </script>
 
 </body>
