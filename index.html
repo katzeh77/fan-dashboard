@@ -1,6 +1,144 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+
+<style>
+body{
+  margin:0;
+  font-family:sans-serif;
+  background:#0b0f1a;
+  color:#fff;
+}
+
+.header{
+  padding:10px;
+  text-align:center;
+  background:#111827;
+}
+
+#clock{
+  font-size:22px;
+  font-weight:bold;
+}
+
+.card{
+  background:#1f2937;
+  margin:10px;
+  padding:12px;
+  border-radius:12px;
+}
+
+button{
+  padding:6px;
+  border:none;
+  border-radius:8px;
+  background:#374151;
+  color:white;
+  cursor:pointer;
+  font-size:12px;
+}
+
+.btn-auto.active{ background:#16a34a; }
+.btn-manual.active{ background:#ea580c; }
+
+input{
+  width:100%;
+  border-radius:6px;
+  border:none;
+  padding:4px;
+  font-size:12px;
+}
+
+.row{
+  display:flex;
+  gap:4px;
+}
+
+.row div{
+  flex:1;
+  text-align:center;
+  font-size:11px;
+}
+
+.tempBox{
+  text-align:center;
+  font-size:14px;
+}
+
+#status{
+  text-align:center;
+  padding:5px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="header">
+  A8 Controller
+  <div id="clock">--:--:--</div>
+</div>
+
+<div id="status">🔌 Connecting...</div>
+
+<!-- MODE -->
+<div class="card" style="text-align:center;">
+<button id="btnAuto" class="btn-auto" onclick="setMode('auto')">AUTO</button>
+<button id="btnManual" class="btn-manual" onclick="setMode('manual')">MANUAL</button>
+</div>
+
+<!-- SUHU -->
+<div class="card">
+  <div class="row">
+    <div class="tempBox">
+      Suhu Atas<br><span id="t1">--</span> °C
+    </div>
+    <div class="tempBox">
+      Suhu Bawah<br><span id="t2">--</span> °C
+    </div>
+  </div>
+
+  <div style="margin-top:8px;">
+    Batas Maks (°C)
+    <input type="number" id="batas" value="50">
+    <button onclick="setBatas()">SAVE</button>
+  </div>
+
+  <div id="suhuStatus" style="margin-top:6px;text-align:center;"></div>
+</div>
+
+<!-- CHANNEL -->
+<div id="channels"></div>
+
+<script>
+// ===== MQTT =====
+const client = mqtt.connect('wss://broker.emqx.io:8084/mqtt');
+
 let connected=false;
 
-// ===== MQTT =====
+const statusEl = document.getElementById('status');
+const btnAuto = document.getElementById('btnAuto');
+const btnManual = document.getElementById('btnManual');
+const container = document.getElementById('channels');
+
+// ===== CLOCK =====
+setInterval(()=>{
+  document.getElementById('clock').innerText =
+    new Date().toLocaleTimeString('en-GB');
+},1000);
+
+// ===== MODE UI =====
+function updateModeUI(mode){
+  btnAuto.classList.remove('active');
+  btnManual.classList.remove('active');
+
+  if(mode==='auto') btnAuto.classList.add('active');
+  else btnManual.classList.add('active');
+}
+
+// ===== MQTT EVENT =====
 client.on('connect',()=>{
   connected=true;
   statusEl.innerHTML="✅ Connected";
@@ -26,13 +164,13 @@ client.on('offline',()=>{
   statusEl.style.color="red";
 });
 
-// ===== PUBLISH =====
+// ===== SEND MQTT =====
 function pub(topic,msg){
   console.log("SEND:",topic,msg);
 
   client.publish(topic,msg,(err)=>{
     if(err){
-      console.log("ERROR SEND:",err);
+      console.log("ERROR:",err);
       alert("Gagal kirim MQTT");
     }
   });
@@ -40,10 +178,98 @@ function pub(topic,msg){
 
 // ===== MODE =====
 function setMode(m){
-  console.log("SET MODE:",m);
-
   pub("mode",m);
-
-  // langsung update UI biar terasa responsif
   updateModeUI(m);
 }
+
+// ===== BATAS SUHU =====
+function setBatas(){
+  let v=document.getElementById('batas').value;
+  pub("set/batasSuhu",v);
+  alert("Batas suhu disimpan: "+v);
+}
+
+// ===== MQTT MESSAGE =====
+client.on('message',(topic,msg)=>{
+  msg = msg.toString();
+
+  if(topic==="suhu/ntc1"){
+    document.getElementById('t1').innerText=parseFloat(msg).toFixed(1);
+  }
+
+  if(topic==="suhu/ntc2"){
+    document.getElementById('t2').innerText=parseFloat(msg).toFixed(1);
+  }
+
+  if(topic==="status/suhu"){
+    const el=document.getElementById('suhuStatus');
+
+    if(msg==="OVERHEAT"){
+      el.innerHTML="🔥 OVERHEAT (Lampu mati)";
+      el.style.color="red";
+    }else{
+      el.innerHTML="✅ NORMAL";
+      el.style.color="lightgreen";
+    }
+  }
+
+  if(topic==="status/mode"){
+    updateModeUI(msg);
+  }
+});
+
+// ===== LABEL CHANNEL =====
+const labels=[
+"Royal Blue","Blue","Indigo","Red",
+"Green","White","Sump"
+];
+
+// ===== UI CHANNEL =====
+for(let i=1;i<=7;i++){
+  container.innerHTML+=`
+  <div class="card">
+    <b>${labels[i-1]}</b>
+
+    <div class="row">
+      <div>ON<br><input type="time" id="on${i}"></div>
+      <div>PEAK<br><input type="time" id="peak${i}"></div>
+      <div>OFF<br><input type="time" id="off${i}"></div>
+      <div>MAX<br><input type="number" id="max${i}" value="80"></div>
+    </div>
+
+    <button onclick="save(${i})">SAVE</button>
+
+    <div style="margin-top:6px;">
+      Manual %
+      <input type="number" id="man${i}" value="0">
+      <button onclick="manual(${i})">SET</button>
+    </div>
+  </div>`;
+}
+
+// ===== SAVE SCHEDULE =====
+function toMin(t){
+  let [h,m]=t.split(':');
+  return parseInt(h)*60+parseInt(m);
+}
+
+function save(i){
+  let on=toMin(document.getElementById('on'+i).value);
+  let peak=toMin(document.getElementById('peak'+i).value);
+  let off=toMin(document.getElementById('off'+i).value);
+  let max=Math.round(document.getElementById('max'+i).value*2.55);
+
+  pub(`set/schedule/${i}`,`${on},${peak},${off},${max}`);
+  alert("Saved CH"+i);
+}
+
+// ===== MANUAL =====
+function manual(i){
+  let v=parseInt(document.getElementById('man'+i).value);
+  v=Math.max(0,Math.min(100,v));
+  pub(`manual/${i}`,Math.round(v*2.55).toString());
+}
+</script>
+
+</body>
+</html>
