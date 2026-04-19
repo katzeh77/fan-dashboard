@@ -13,49 +13,42 @@ body{
 }
 
 .header{
+  padding:15px;
   text-align:center;
-  padding:10px;
-  font-size:18px;
+  font-size:20px;
   background:#111827;
 }
 
 .card{
   background:#1f2937;
-  margin:8px;
-  padding:10px;
-  border-radius:12px;
-}
-
-.row{
-  display:flex;
-  gap:5px;
-  align-items:center;
-}
-
-.row input{
-  flex:1;
-  padding:5px;
-  font-size:12px;
+  margin:10px;
+  padding:15px;
+  border-radius:15px;
 }
 
 button{
-  padding:6px 8px;
+  padding:10px;
+  margin:5px;
   border:none;
-  border-radius:8px;
+  border-radius:10px;
   background:#3b82f6;
   color:white;
+  cursor:pointer;
 }
 
-.active{
-  background:#22c55e !important;
+button.active{
+  background:#22c55e;
 }
 
-.small{
-  font-size:12px;
+input{
+  width:100%;
+  margin-bottom:5px;
 }
 
-.center{
+#status{
   text-align:center;
+  padding:5px;
+  font-size:14px;
 }
 </style>
 </head>
@@ -64,39 +57,48 @@ button{
 
 <div class="header">A8 Controller</div>
 
-<div class="card center">
+<div id="status">🔌 Connecting...</div>
+
+<!-- JAM -->
+<div class="card" style="text-align:center;">
   <div id="clock">--:--:--</div>
 </div>
 
-<div class="card center">
-  <div>Suhu Atas: <span id="t1">--</span> °C</div>
-  <div>Suhu Bawah: <span id="t2">--</span> °C</div>
-  <div>Status: <span id="statusSuhu">--</span></div>
+<!-- SUHU -->
+<div class="card">
+  Suhu Atas: <span id="t1">--</span> °C<br>
+  Suhu Bawah: <span id="t2">--</span> °C<br>
+  Status: <span id="statusSuhu">--</span>
 </div>
 
+<!-- BATAS SUHU -->
 <div class="card">
   Batas Suhu:
   <input type="number" id="maxTemp" value="50">
   <button onclick="saveTemp()">SAVE</button>
 </div>
 
+<!-- IDLE -->
 <div class="card">
-  IDLE (menit):
+  Idle Time (menit):
   <input type="number" id="idle" value="0">
   <button onclick="saveIdle()">SAVE</button>
 </div>
 
-<div class="card center">
+<!-- MODE -->
+<div class="card">
   <button id="btnAuto" onclick="setMode('auto')">AUTO</button>
   <button id="btnManual" onclick="setMode('manual')">MANUAL</button>
 </div>
 
+<!-- CHANNEL -->
 <div id="channels"></div>
 
 <script>
 const client = mqtt.connect('wss://broker.emqx.io:8084/mqtt');
 
 const container = document.getElementById('channels');
+const statusEl = document.getElementById('status');
 
 // ===== CLOCK =====
 setInterval(()=>{
@@ -105,29 +107,35 @@ setInterval(()=>{
     d.toLocaleTimeString();
 },1000);
 
-// ===== CREATE CHANNEL UI =====
+// ===== UI CHANNEL (ASLI, TIDAK DIUBAH) =====
 for(let i=1;i<=7;i++){
-  container.innerHTML+=`
+  container.innerHTML += `
   <div class="card">
-    <div>CH${i}</div>
-    <div class="row">
-      <input type="time" id="on${i}">
-      <input type="time" id="peak${i}">
-      <input type="time" id="off${i}">
-      <input type="number" id="max${i}" placeholder="%" value="80">
-      <button onclick="saveCH(${i})">SAVE</button>
-    </div>
+    <h3>Channel ${i}</h3>
+
+    ON <input type="time" id="on${i}">
+    PEAK <input type="time" id="peak${i}">
+    OFF <input type="time" id="off${i}">
+    MAX <input type="number" id="max${i}" value="80">
+
+    <button onclick="setSch(${i})">SAVE</button>
   </div>`;
 }
 
 // ===== MQTT =====
 client.on('connect',()=>{
-  console.log("MQTT Connected");
+  statusEl.innerHTML="✅ Connected MQTT";
+  statusEl.style.color="#0f0";
 
   client.subscribe("suhu/ntc1");
   client.subscribe("suhu/ntc2");
   client.subscribe("status/suhu");
   client.subscribe("status/mode");
+});
+
+client.on('error',()=>{
+  statusEl.innerHTML="❌ MQTT Error";
+  statusEl.style.color="#f00";
 });
 
 client.on('message',(topic,msg)=>{
@@ -164,22 +172,23 @@ function updateModeUI(m){
   else document.getElementById('btnManual').classList.add("active");
 }
 
-// ===== SAVE CHANNEL =====
+// ===== TIME CONVERT =====
 function toMin(t){
   let [h,m]=t.split(':');
   return parseInt(h)*60+parseInt(m);
 }
 
-function saveCH(i){
-  let on=toMin(document.getElementById('on'+i).value);
-  let peak=toMin(document.getElementById('peak'+i).value);
-  let off=toMin(document.getElementById('off'+i).value);
-  let max=Math.round(document.getElementById('max'+i).value*2.55);
+// ===== SAVE SCHEDULE =====
+function setSch(i){
+  let on = toMin(document.getElementById('on'+i).value);
+  let peak = toMin(document.getElementById('peak'+i).value);
+  let off = toMin(document.getElementById('off'+i).value);
+  let max = Math.round(document.getElementById('max'+i).value*2.55);
 
-  let data=`${on},${peak},${off},${max}`;
+  let data = `${on},${peak},${off},${max}`;
+
   client.publish(`set/schedule/${i}`,data);
-
-  alert("Saved CH"+i);
+  alert("Schedule CH"+i+" disimpan");
 }
 
 // ===== SAVE TEMP =====
