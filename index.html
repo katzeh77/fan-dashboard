@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+
+<style>
+body{
+  margin:0;
+  font-family:sans-serif;
+  background:#0b0f1a;
+  color:#fff;
+}
+
+.header{
+  text-align:center;
+  padding:10px;
+  font-size:18px;
+  background:#111827;
+}
+
+.card{
+  background:#1f2937;
+  margin:8px;
+  padding:10px;
+  border-radius:12px;
+}
+
+.row{
+  display:flex;
+  gap:5px;
+  align-items:center;
+}
+
+.row input{
+  flex:1;
+  padding:5px;
+  font-size:12px;
+}
+
+button{
+  padding:6px 8px;
+  border:none;
+  border-radius:8px;
+  background:#3b82f6;
+  color:white;
+}
+
+.active{
+  background:#22c55e !important;
+}
+
+.small{
+  font-size:12px;
+}
+
+.center{
+  text-align:center;
+}
+</style>
+</head>
+
+<body>
+
+<div class="header">A8 Controller</div>
+
+<div class="card center">
+  <div id="clock">--:--:--</div>
+</div>
+
+<div class="card center">
+  <div>Suhu Atas: <span id="t1">--</span> °C</div>
+  <div>Suhu Bawah: <span id="t2">--</span> °C</div>
+  <div>Status: <span id="statusSuhu">--</span></div>
+</div>
+
+<div class="card">
+  Batas Suhu:
+  <input type="number" id="maxTemp" value="50">
+  <button onclick="saveTemp()">SAVE</button>
+</div>
+
+<div class="card">
+  IDLE (menit):
+  <input type="number" id="idle" value="0">
+  <button onclick="saveIdle()">SAVE</button>
+</div>
+
+<div class="card center">
+  <button id="btnAuto" onclick="setMode('auto')">AUTO</button>
+  <button id="btnManual" onclick="setMode('manual')">MANUAL</button>
+</div>
+
+<div id="channels"></div>
+
+<script>
+const client = mqtt.connect('wss://broker.emqx.io:8084/mqtt');
+
+const container = document.getElementById('channels');
+
+// ===== CLOCK =====
+setInterval(()=>{
+  let d=new Date();
+  document.getElementById('clock').innerHTML=
+    d.toLocaleTimeString();
+},1000);
+
+// ===== CREATE CHANNEL UI =====
+for(let i=1;i<=7;i++){
+  container.innerHTML+=`
+  <div class="card">
+    <div>CH${i}</div>
+    <div class="row">
+      <input type="time" id="on${i}">
+      <input type="time" id="peak${i}">
+      <input type="time" id="off${i}">
+      <input type="number" id="max${i}" placeholder="%" value="80">
+      <button onclick="saveCH(${i})">SAVE</button>
+    </div>
+  </div>`;
+}
+
+// ===== MQTT =====
+client.on('connect',()=>{
+  console.log("MQTT Connected");
+
+  client.subscribe("suhu/ntc1");
+  client.subscribe("suhu/ntc2");
+  client.subscribe("status/suhu");
+  client.subscribe("status/mode");
+});
+
+client.on('message',(topic,msg)=>{
+  msg=msg.toString();
+
+  if(topic=="suhu/ntc1"){
+    document.getElementById('t1').innerHTML=msg;
+  }
+
+  if(topic=="suhu/ntc2"){
+    document.getElementById('t2').innerHTML=msg;
+  }
+
+  if(topic=="status/suhu"){
+    document.getElementById('statusSuhu').innerHTML=msg;
+  }
+
+  if(topic=="status/mode"){
+    updateModeUI(msg);
+  }
+});
+
+// ===== MODE =====
+function setMode(m){
+  client.publish("mode",m);
+  updateModeUI(m);
+}
+
+function updateModeUI(m){
+  document.getElementById('btnAuto').classList.remove("active");
+  document.getElementById('btnManual').classList.remove("active");
+
+  if(m=="auto") document.getElementById('btnAuto').classList.add("active");
+  else document.getElementById('btnManual').classList.add("active");
+}
+
+// ===== SAVE CHANNEL =====
+function toMin(t){
+  let [h,m]=t.split(':');
+  return parseInt(h)*60+parseInt(m);
+}
+
+function saveCH(i){
+  let on=toMin(document.getElementById('on'+i).value);
+  let peak=toMin(document.getElementById('peak'+i).value);
+  let off=toMin(document.getElementById('off'+i).value);
+  let max=Math.round(document.getElementById('max'+i).value*2.55);
+
+  let data=`${on},${peak},${off},${max}`;
+  client.publish(`set/schedule/${i}`,data);
+
+  alert("Saved CH"+i);
+}
+
+// ===== SAVE TEMP =====
+function saveTemp(){
+  let v=document.getElementById('maxTemp').value;
+  client.publish("set/batasSuhu",v);
+}
+
+// ===== SAVE IDLE =====
+function saveIdle(){
+  let v=document.getElementById('idle').value;
+  client.publish("set/idle",v);
+  alert("Idle disimpan");
+}
+</script>
+
+</body>
+</html>
